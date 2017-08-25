@@ -23,11 +23,17 @@ cd A/0
 unzip ../../../runcpm/DISK/A.ZIP
 cp -v ../../../cpm/* .
 
+# Build sub
+cp ../../../build.sub .
+
 # Upper case file names
 for i in *; do mv -f "$i" "$(echo $i|tr a-z A-Z)"; done
 
 cd ../..
 
-$runcpm
+$runcpm <<EOF
+submit cz
+exit
+EOF
 
 cd ..

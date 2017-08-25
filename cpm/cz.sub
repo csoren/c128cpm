@@ -15,18 +15,18 @@ rmac cxext $$pz-s
 rmac cxscb $$pz-s
 mac  cxkycode $$pz-s
 mac  fast8502 $$pz-s
-pip cx1.rel=cxkrnl.rel
-pip cx2.rel=cxio.rel
-pip cx3.rel=cxintr.rel
-pip cx4.rel=cxramdsk.rel
-pip cx5.rel=cxkey.rel
-pip cx6.rel=cxem.rel
-pip cx7.rel=cxvt.rel
-pip cx8.rel=cx80.rel
-pip cx9.rel=cxprinte.rel
-pip cx10.rel=cxdisk.rel
-pip cx11.rel=cxext.rel
-pip cx12.rel=cxscb.rel
+ren cx1.rel=cxkrnl.rel
+ren cx2.rel=cxio.rel
+ren cx3.rel=cxintr.rel
+ren cx4.rel=cxramdsk.rel
+ren cx5.rel=cxkey.rel
+ren cx6.rel=cxem.rel
+ren cx7.rel=cxvt.rel
+ren cx8.rel=cx80.rel
+ren cx9.rel=cxprinte.rel
+ren cx10.rel=cxdisk.rel
+ren cx11.rel=cxext.rel
+ren cx12.rel=cxscb.rel
 link bnkbios3[b]=cx1,cx2,cx3,cx5,cx6,cx7,cx8,cx9,cx10,cx4,cx11,cx12
 gencpm auto
 addbios fast8502
