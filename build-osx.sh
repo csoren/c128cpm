@@ -13,7 +13,7 @@ cd buildenv
 
 # RunCPM
 cp ../runcpm/RunCPM/RunCPM .
-cp ../runcpm/CCP/CCP-CCPZ.* .
+cp ../runcpm/CCP/CCP-*.* .
 
 # Disk A user 0
 mkdir -p A/0
