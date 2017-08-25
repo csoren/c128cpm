@@ -344,7 +344,7 @@ init$ext:
 ;
 ;
 	dseg
-?in65:			» characteò input
+?in65:			; character input
 	call	?ins65		; check for character adv.
 	jrz	?in65		; loop if NOT
 	lda	key		; get the key code
