@@ -1,0 +1,408 @@
+	; This macro library is to be used with DRI's MAC or RMAC
+	;   (MAC and RMAC are registered trademarks of Digital Research)
+	;
+	; The code structure is the same as normal 6502 asmabler
+	; with the following differences:
+	;
+	;   Hex numbers '$00' are replaced with a number followed by an h
+	;   i.e. normal 8080 type numbers  (also have binary, and octal)
+	;
+	;   The immediate instruction's format is different. Below is an
+	;   example:
+	;		normal 6502 ASM		LIB 6502 ASM
+
+	;		lda	#$A5		lda	 0A5h,#
+	;
+
+
+	; Written by	Von Ertwine
+	; 26 July 84
+	;
+
+xaaa	macro	@W,@Y,@Z
+	 if	nul @Z
+	  if	@Y<256
+	   db	@W+4,@Y
+	  else
+	   db	@W+12
+	   dw	@Y	
+	  endif
+	 else
+	  if	'&@Z'='X)'
+	   db	@W,@Y&)
+	  else
+	   if	'&@Z'='X'
+	    if	@Y<256
+	     db	@W+20,@Y
+	    else
+	     db	@W+28
+	     dw	@Y
+	    endif
+	   else
+	    if	'&@Z'='Y'
+	     @A	set 0
+	     irpc	@x,@y
+	      if	'&@X'='('
+	       @A	set 1
+	      endif
+	     endm
+	     if	@A=1
+	      db	@W+16,@Y
+	     else
+	      db	@W+24
+	      dw	@Y
+	     endif
+	    else
+	     if	'&@Z'='#'
+	      if	@Y<256
+	       db	@W+8,@Y
+	      else
+	       db	@W,0,0
+	       'Error'
+	      endif
+	     endif
+	    endif
+	   endif
+	  endif
+	 endif
+	endm
+
+xbb	macro	@W,@Y,@Z
+	 @A	set 0
+	 if	not nul @Z
+	  @A	set 16
+	  if	(@W=86h) or (@W=84h)
+	   if	@Y>256
+	    'Error'
+	   endif
+	  endif
+	 endif
+	 if	@Y<256
+	  db	@W+@A,@Y
+	 else
+	  db	@W+@A+8
+	  dw	@Y
+	 endif
+	endm
+
+xbbb	macro	@W,@Y,@Z
+	 if	NUL @Z
+	  @A	set	0
+	  irpc	@X,@Y
+	   @A	set @A+1
+	  endm
+	  if	@A=1
+	   if	'&@Y'='A'
+	    db	@W+8
+	   else
+	    if	@Y<256
+	     db	@W+4,@Y
+	    else
+	     db	@W+12
+	     dw	@Y
+	    endif
+	   endif
+	  else	
+	   if	@Y<256
+	    db	@W+4,@Y
+	   else
+	    db	@W+12
+	    dw	@Y
+	   endif
+	  endif
+	 else
+	  if	@Y<256
+	   db	@W+20,@Y
+	  else
+	   db	@W+28
+	   dw	@Y
+	  endif
+	 endif
+	endm
+
+xcc	macro	@W,@Y,@Z
+	 if	NUL @Z
+	  if	@Y<256
+	   db	@W+4,@Y
+	  else
+	   db	@W+12
+	   dw	@Y
+	  endif
+	 else
+	  if '&@Z'='#'
+	   db	@W,@Y
+	  else
+	   'Error'
+	  endif
+	 endif
+	endm
+
+xddd	macro	@W,@Y,@Z
+	 if	NUL @Z
+	  if	@Y<256
+	   db	@W+4,@Y
+	  else
+	   db	@W+12
+	   dw	@Y
+	  endif
+	 else
+	  if	'&@Z'='#'
+	   db	@W,@Y
+	  else
+	   if	@Y<256
+	    db	@W+20,@Y
+	   else
+	    db	@W+28
+	    dw	@Y
+	   endif
+	  endif
+	 endif
+	endm
+
+
+
+@adc	macro	@u,@v
+	xaaa	61h,@u,@v
+	endm
+
+@and	macro	@u,@v
+	xaaa	21h,@u,@v
+	endm
+
+@asl	macro	@u,@v
+	xbbb	2,@u,@v
+	endm
+
+@bcc	macro	@u
+	db	90h,@u-$-1
+	endm
+
+@bcs	macro	@u
+	db	0b0h,@u-$-1
+	endm
+
+@beq	macro	@u
+	db	0f0h,@u-$-1
+	endm
+
+@bit	macro	@u
+	 if	@u<256
+	  db	24h,@u
+	 else
+	  db	2ch
+	  dw	@u
+	 endif
+	endm
+
+@bmi	macro	@u
+	db	30h,@u-$-1
+	endm
+
+@bne	macro	@u
+	db	0d0h,@u-$-1
+	endm
+
+@bpl	macro	@u
+	db	10h,@u-$-1
+	endm
+
+@brk	macro
+	db	00h
+	endm
+
+@bvc	macro	@u
+	db	50h,@u-$-1
+	endm
+
+@bvs	macro	@u
+	db	70h,@u-$-1
+	endm
+
+@clc	macro
+	db	018h
+	endm
+
+@cld	macro
+	db	0d8h
+	endm
+
+@cli	macro
+	db	058h
+	endm
+
+@clv	macro
+	db	0b8h
+	endm
+
+@cmp	macro	@u,@v
+	xaaa	0c1h,@u,@v
+	endm
+
+@cpx	macro	@u,@v
+	xcc	0e0h,@u,@v
+	endm
+
+@cpy	macro	@u,@v
+	xcc	0c0h,@u,@v
+	endm
+
+@dec	macro	@u,@v
+	xbb	0c6h,@u,@v
+	endm
+
+@dex	macro
+	db	0cah
+	endm
+
+@dey	macro
+	db	088h
+	endm
+
+@eor	macro	@u,@v
+	xaaa	41h,@u,@v
+	endm
+
+@inc	macro	@u,@v
+	xbb	0e6h,@u,@v
+	endm
+
+@inx	macro
+	db	0e8h
+	endm
+
+@iny	macro
+	db	0c8h
+	endm
+
+@jmp	macro	@u
+	@A	set 0
+	 irpc	@X,@u
+	  if	'&@X'='('
+	   @A	set 20h
+	  endif
+	 endm
+	db	4ch+@A
+	dw	@U
+	endm
+
+@jsr	macro	@u
+	db	20h
+	dw	@u
+	endm
+
+@lda	macro	@u,@v
+	xaaa	0a1h,@u,@v
+	endm
+
+@ldx	macro	@u,@v
+	xddd	0a2h,@u,@v
+	endm
+
+@ldy	macro	@u,@v
+	xddd	0a0h,@u,@v
+	endm
+
+@lsr	macro	@u,@v
+	xbbb	42h,@u,@v
+	endm
+
+@nop	macro
+	db	0eah
+	endm
+
+@ora	macro	@u,@v
+	xaaa	1,@u,@v
+	endm
+
+@pha	macro
+	db	048h
+	endm
+
+@php	macro
+	db	008h
+	endm
+
+@pla	macro
+	db	068h
+	endm
+
+@plp	macro
+	db	028h
+	endm
+
+@rol	macro	@u,@v
+	xbbb	22h,@u,@v
+	endm
+
+@ror	macro	@u,@v
+	xbbb	62h,@u,@v
+	endm
+
+@rti	macro
+	db	040h
+	endm
+
+@rts	macro
+	db	060h
+	endm
+
+@sbc	macro	@u,@v
+	xaaa	0e1h,@u,@v
+	endm
+
+@sec	macro
+	db	038h
+	endm
+
+@sed	macro
+	db	0f8h
+	endm
+
+@sei	macro
+	db	078h
+	endm
+
+@sta	macro	@u,@v
+	xaaa	81h,@u,@v
+	endm
+
+@stx	macro	@u,@v
+	xbb	86h,@u,@v
+	endm
+
+@sty	macro	@u,@v
+	xbb	84h,@u,@v
+	endm
+
+@tax	macro
+	db	0aah
+	endm
+
+@tay	macro
+	db	0a8h
+	endm
+
+@tsx	macro
+	db	0bah
+	endm
+
+@txa	macro
+	db	08ah
+	endm
+
+@txs	macro
+	db	09ah
+	endm
+
+@tya	macro
+	db	098h
+	endm
+
+@skip1	macro
+	db	024h
+	endm
+
+@skip2	macro
+	db	02ch
+	endm
+

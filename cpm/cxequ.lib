@@ -1,0 +1,651 @@
+
+
+
+$*MACRO
+
+false		equ	0
+true		equ	not false
+
+use$fast	equ	false
+use$6551	equ	false	;true
+
+use$vt100	equ	false
+use$1581	equ	true
+banked		equ	true
+EXTSYS		equ	false	; use external system as disk and char I/O
+pre$release	equ	false
+
+; start at Jan 1,1978	 78  79  80  81  82  83  84  85  86
+dt$hx$yr	equ	365+365+366+365+365+365+366+365+365
+;	1985			  1  2  3  4  5  6  7  8  9 10 11 12
+date$hex	equ	dt$hx$yr+31+28+31+30+28
+
+date	macro
+	db	'28 May 87'
+	endm
+;
+;	this is only for Pre-Released versions (done in RED)
+;
+warning	macro
+	if	pre$release
+	 db	cr,lf,lf
+	 db	esc,esc,esc,red+20h
+	 db	'User Beware:',cr,lf
+		;1234567890123456789012345678901234567890
+	 db	'       This version of the software is a',cr,lf
+	 db	'  PRE-RELEASE  for testing only.  It has',cr,lf
+	 db	'  been tested but has not yet passed QA.',cr,lf
+	 db	esc,esc,esc,purple+50h
+	 endif
+	endm
+
+
+space	macro	?x,for
+?x	equ	start
+start	set	start+for
+	endm
+
+;
+; boot memory map (bank 0 only)
+;
+bios02		equ	3000h	;
+block$buffer	equ	3400h	; uses 2K
+boot$parm	equ	3C00h	; uses about 256 bytesŠ;
+; bank 0 low memory map
+;
+ROM		equ	0000h
+VIC$color	equ	1000h	; I/O page only (IO$0 selected)
+SYS$key$area	equ	1000h	; 3 256 byte blocks (allow 4)
+screen$40	equ	1400h	; 2 X 80 X 25 = 4000 
+BANK$parm$blk	equ	2400h	; allow 0.5K of parameters
+BIOS8502	equ	2600h	; 1.5K
+VIC$screen	equ	2C00h	; 1K
+ccp$buffer	equ	3000h	; 0c80h (allow 4K)
+bank0$free	equ	4000h	; start of free area in bank 0
+;
+; mapped I/O locations
+;
+VIC		equ	0D000h		; 8564
+SID		equ	0D400h		; 6581
+MMU		equ	0D500h		; 8722
+DS8563		equ	0D600h		; 8563
+INT$6551	equ	0D700h		; 6551 (added to enginnerring units)
+VIC$C$H		equ	0D800h		; (memory mapped only in IO$0)
+VIC$C$L		equ	01000h		; (memory and i/o mapped in IO$0)
+CIA1		equ	0DC00h		; 6526
+CIA2		equ	0DD00h		; 6526
+USART		equ	0DE00h		; 6551 (extrn card)
+RAM$dsk$base	equ	0DF00h		; 8726
+
+;
+; Common memory allocation
+;
+int$block	equ	0FC00h	; mode 2 interrupt pointers (to FDFDh) 
+parm$block	equ	0FD00h	; system parameters
+@buffer		equ	0FE00h	; disk buffer (256 bytes)
+;			0FF00h	; to 0FFFFh used by 8502
+;
+; the following are C128 system equates
+;
+enable$z80	equ	0FFD0h		; 8502 code
+return$z80	equ	0FFDCh
+enable$6502	equ	0FFE0h		; Z80 code
+return$6502	equ	0FFEEh
+
+	page
+start	set	parm$block+1	; 1st byte used as Intterrupt pointer
+space	vic$cmd,1		;; bios8502 command byte
+space	vic$drv,1		;  bios8502 drive (bit 0 set, drv 0)
+space	vic$trk,1		;; bios8502 track #
+space	vic$sect,1		;; bios8502 sector #
+space	vic$count,1		;  bios8502 sector count
+space	vic$data,1		;; bios8502 data byte to/from
+space	cur$drv,1		;  current disk installed to Vir. drive
+space	fast,1			;  bit 0 set, drv 0 is fast. ect. 
+
+space	key$tbl,2		;; pointer to keyboard table
+space	fun$tbl,2		;; pointer to function tableŠspace	color$tbl$ptr,2		;; pointer to logical color table
+space	fun$offset,1		;; function # to be preformed
+space	sound$1,2		;;
+space	sound$2,2		;;
+space	sound$3,2		;;
+
+space	@trk,2			;; current track number
+space	@dma,2			;; current DMA address
+;
+; below here not used by ROM
+;
+space	@sect,2			; current sector number
+space	@cnt,1			; record count for multisector transfer
+space	@cbnk,1			; bank for processor operations
+space	@dbnk,1			; bank for DMA operations
+space	@adrv,1			; currently selected disk drive
+space	@rdrv,1			; controller relative disk drive
+space	sys$speed,0	; byte value 0=1MHz, 1=2 MHz (no 40 column disp)
+space	ccp$count,1		; number of records in the CCP (not used)
+space	stat$enable,1		; status line enable
+				;  7 kybrd, key codes(1), functions(0)
+				;  6 40 column tracking on(0), off(1)
+				;  0 disk stat, enable(1), disable(0) 
+space	emulation$adr,2		; address of current emulation
+space	usart$adr,2		; PTR to 6551 reg (not used before 6 Dec 85)
+; CXIO equates
+space	int$hl,2+20		; interrupt HL hold location
+space	int$stack,0		; currently only 10*2 used
+space	user$hl$temp,2		; user function HL hold location
+space	hl$temp,2		; misc temp storage (used by VECTOR)
+space	de$temp,2		; misc temp storage (used by VECTOR)
+space	a$temp,1		; misc temp storage (used by VECTOR)
+space	source$bnk,1		; inter bank move source bank #
+space	dest$bnk,1		; inter bank move dest bank #
+space	MFM$tbl$ptr,2		; pointer to MFM table
+; 1st release end (3 June and 1 Aug 85)
+space	prt$conv$1,2		; pointer to printer 1 ASCII Conversion
+space	prt$conv$2,2		; pointer to printer 2 ASCII Conversion
+space	key$FX$function,2
+space	XxD$config,1		; bit 7	0 = no parity	1 = parity
+				; bit 6	0 = mark/space	1 = odd/even
+				; bit 5	0 = space/even	1 = mark/odd
+				; bit 1	0 = 1 stop bit	1 = 2 stop bits
+				; bit 0	0 = 7 data bits	1 = 8 data bits
+
+space	RS232$status,1		; bit 7, 1=send data, 0=no data
+				; bit 6, 1=sending data
+				; bit 5, 1=recv que active
+				; bit 4, 1=parity error
+				; bit 3, 1=framing error
+				; bit 2, 1=recv over run (no used)
+				; bit 1, 1=receiving data
+				; bit 0, 1=Data byte ready
+
+space	xmit$data,1		; data byte to sendŠspace	recv$data,1		; received data byte
+
+;
+; The following equates are used by the interrupt driven keyboard handler
+;
+space	int$rate,1
+;
+;	1st byte is a pointer into table, 2nd to 12th byte represent
+;	the keyboards current state (active low), NOTE: only
+;	current if key$buffer is not full
+;
+space	key$scan$tbl,12
+;
+;	keyboard roll over buffer
+;
+key$buf$size	equ	8*2		; must be an even number of bytes
+space	key$get$ptr,2
+space	key$put$ptr,2
+space	key$buffer,key$buf$size
+;
+;	software UART recv buffer
+;
+RxD$buf$size	equ	64
+space	RxD$buf$count,1
+space	RxD$buf$put,1
+space	RxD$buf$get,1
+space	RxD$buffer,RxD$buf$size
+space	tick$vol,1
+
+INT$vector	equ	0FDFDh		;; contains a JMP int$handler
+					; (in common)
+	page
+;===> 40 column misc parm
+start	set	BANK$parm$blk
+space	temp$1,2		;;
+space	@off40,0		;;
+space	cur$offset,2		;;
+space	old$offset,1		;;
+space	prt$flg,1		;;
+space	flash$pos,2		;;
+;
+;===> 40 column position and color storage
+space	paint$size,1		;;
+space	char$adr$40,2		;;
+space	char$col$40,1		;;
+space	char$row$40,1		;;
+space	attr$40,1		;;
+space	bg$color$40,1		;;
+space	bd$color$40,1		;;
+space	rev$40,1		;;
+;
+;===> 80 column position and color storage
+space	char$adr,2		;;
+space	char$col,1		;;
+space	char$row,1		;;Šspace	current$atr,1		;;
+space	bg$color$80,1		;;
+space	char$color$80,1		;;
+;	ROM uses localtions above this point
+;
+;===> Emulation parameters
+space	parm$base,2
+space	parm$area$80,3
+	;	ds	2	; 80 column exec$adr
+	;	ds	1	; 80 column row #
+space	parm$area$40,3
+	;	ds	2	; 40 column exec$adr
+	;	ds	1	; 40 column row #
+space	buffer$80$col,40*2
+;
+;===> CXIO parameters
+;	int$count not used by releases past 10 Oct 85
+space	int$count,1		; one added every 1/60th sec
+space	key$buf,1
+;
+;===> CXKEYS parameters
+space	key$down$tbl,11*2	; not used any more (int code)
+;;;;; free space above, new interrupt driven code does not require this space 
+; control$keys	equ	key$down$tbl+11*2 ; byte, not used any more (int code)
+
+space	commodore$mode,1
+space	msgptr,2
+space	offset,1
+space	cur$pos,1
+space	string$index,1
+; 1st release end (3 June 85)
+space	sys$freq,1		; -1=50Hz, 0=60Hz
+; 2nd release end (1 Aug 85)
+
+	page
+
+;===> temp ROM boot data storage
+blk$ptr$cnt	equ	32
+start	set	boot$parm
+space	load$count,2		; number of 128 byte blocks to load
+space	ld$blk$ptr,2		; current sector dma pointer
+space	blk$unld$ptr,2		; read memory block (1k,2K) pointer
+space	block$size,1		; block size (1K=32 or 2K=64)
+space	block$end,2		; allow 48K cpm.sys to load
+space	block$ptrs,blk$ptr$cnt	; end of block load buffer (+1K or +2K)
+space	info$buffer,12
+					; CPM3.sys load adr's and counts
+space	ext$num,1		; CPM3.SYS current ext #
+space	retry,1+64
+space	boot$stack,0		; allow 64 bytes of stack
+
+;===> special equates used by CXKEY
+special		equ	00010111b
+SF$exit		equ	001h		; RETURN KEY
+SF$insert	equ	028h		; PLUS KEYŠSF$delete	equ	02Bh		; MINUS KEY
+alpha$toggle	equ	03Dh		; commodore key
+alt$key		equ	050h		; alterant key
+SF$left		equ	055h		; left arrow key
+lf$arrow	equ	055h		; left arrow key
+SF$right	equ	056h		; right arrow key
+rt$arrow	equ	056h		; right arrow key
+
+
+buff$large	equ	25
+buff$small	equ	7
+buff$pos	equ	7
+
+
+	page
+;===> External RS232 interface controls
+; rxd$6551	equ	0		; read
+; txd$6551	equ	0		; write
+; status$6551	equ	1		; read
+; reset$6551	equ	1		; write
+; command$6551	equ	2		; read/write
+; control$6551	equ	3		; read/write
+
+txrdy		equ	10h
+rxrdy		equ	08h
+cmd$init	equ	0bh	; no parity, enable txd + rxd, interrupts off
+cntr$init$19200	equ	1Fh	; 1 stop, 8 bits, 19200 baud 
+cntr$init$9600	equ	1Eh	; 1 stop, 8 bits, 9600 baud (internal)
+cntr$init$600	equ	17h	; 600 baud
+
+;===> memory management loactions
+mmu$start	equ	MMU
+conf$reg	equ	MMU		; 3eh
+conf$reg$1 	equ	MMU+1		; 3fh
+conf$reg$2	equ	MMU+2		; 7fh
+conf$reg$3	equ	MMU+3		; 3eh
+conf$reg$4	equ	MMU+4		; 7eh
+mode$reg	equ	MMU+5		; b1h
+ram$reg		equ	MMU+6		; 0bh 16K top Common
+page$0$l	equ	MMU+7		; 00h
+page$0$h	equ	MMU+8		; 01h
+page$1$l	equ	MMU+9		; 01h	
+page$1$h	equ	MMU+10		; 01h
+mmu$version	equ	MMU+11		; ??h
+
+enable$C64	equ	11110001b	; FS=0
+z80$off		equ	10110001b	; value to be write to enable 8502
+z80$on		equ	10110000b
+fast$rd$en	equ	Z80$on+0	; fast serial read
+fast$wr$en	equ	Z80$on+8	; fast serial write
+common$4K	equ	09h		; top  4K common
+common$8K	equ	0ah		; top  8K common
+common$16K	equ	0bh		; top 16K common
+
+;===> preconfiguration mapsŠforce$map	equ	0ff00h
+bank$0		equ	0ff01h		; 3fh
+bank$1		equ	0ff02h		; 7fh
+io		equ	0ff03h		; 3eh
+io$0		equ	0ff03h		; 3eh
+io$1		equ	0ff04h		; 7eh
+
+	page
+;===> 80 column display equates
+DS$index$reg	equ	DS8563
+DS$status$reg	equ	DS8563
+DS$data$reg	equ	DS8563+1
+;===> register pointers
+DS$cursor$high	equ	14
+DS$cursor$low	equ	15
+DS$rw$ptr$high	equ	18
+DS$rw$ptr$low	equ	19
+DS$rw$data	equ	31
+DS$color	equ	26
+;===> status bits
+DS$ready	equ	80h
+DS$lt$pen	equ	40h
+;===> display memory layout  (16K) 0-3fffh 
+DS$screen	equ	0000h
+DS$attribute	equ	0800h
+DS$char$def	equ	2000h
+;
+;===> VIC equates  (8564)
+;
+VIC$blk		equ	VIC+17		; bit 4 = 1 for screen on
+VIC$blk$msk	equ	00010000b	;
+
+VIC$key$row	equ	VIC+47		; output
+
+VIC$speed	equ	VIC+48		; bit 0 = 1 for fast
+VIC$speed$msk	equ	00000001b	;
+
+; vic colors
+black		equ	0
+white		equ	1
+red		equ	2
+cyan		equ	3
+purple		equ	4
+green		equ	5
+blue		equ	6
+yellow		equ	7
+orange		equ	8
+brown		equ	9
+lt$red		equ	10
+dark$grey	equ	11
+med$gray	equ	12
+lt$green	equ	13
+lt$blue		equ	14
+lt$grey		equ	15
+Š	page
+
+RM$status	equ	RAM$dsk$base	;read only register
+;   bit 7	Interrupt pending if 1
+;	6	Transfer complete if 1
+;	5	Block verify error if 1
+;   note:  bits 5-7 are cleared when read
+;	4	128K if 0,  512K if 1
+;	3-0	Version #
+;
+RM$command	equ	RAM$dsk$base+1	;r/w
+;   bit	7	execute per current config. if set
+;	6	reserved
+;	5	enable auto reload if set (restores all register to
+;			value before command was done, else point to
+;			next byte to read/write.)
+;	4	disable FF00 decode if set (do operation after command writen)
+;	3,2	reserved
+;	1,0	00 = transfer C128 --> Ram Disk
+;		01 = Transfer C128 <-- Ram Disk
+;		10 = swap     C128 <-> Ram Disk
+;		11 = Verify   C128  =  Ram Disk
+;
+RM$128$low	equ	RAM$dsk$base+2	;r/w
+;	bits 0 to 7 of C128 address
+;
+RM$128$mid	equ	RAM$dsk$base+3	;r/w
+;	bits 8 to 15 of the C128 address
+;
+RM$ext$low	equ	RAM$dsk$base+4	;r/w
+;	bits 0 to 7 of Ram Disk address
+;
+RM$ext$mid	equ	RAM$dsk$base+5	;r/w
+;	bits 8 to 15 of Ram Disk address
+;
+RM$ext$hi	equ	RAM$dsk$base+6	;r/w
+;	bit  16       of Ram Disk address if 128K version
+;	bits 16 to 18 of Ram Disk address if 512K version
+;
+RM$count$low	equ	RAM$dsk$base+7	;r/w
+;	low byte transfer count (bits 0-7)
+;
+RM$count$hi	equ	RAM$dsk$base+8	;r/w
+;	hi byte transfer count  (bits 8-15)
+;
+RM$intr$mask	equ	RAM$dsk$base+9	;r/w
+;   bit	7	1=enable chip interrupts
+;	6	1=enable end of block interrupts
+;	5	1=enable verify error interrupts
+;
+RM$control	equ	RAM$dsk$base+10	;r/w
+;   bit	7,6    	00	Increment both addresses  (default)
+;		01	Fix expansion address
+;		10	Fix C128 address
+;		11	Fix both addressesŠ;
+
+	page
+;===> CIA equates
+
+Data$a		equ	00h
+Data$b		equ	01h
+Data$dir$a	equ	02h
+Data$dir$b	equ	03h
+timer$a$low	equ	04h
+timer$a$high	equ	05h
+timer$b$low	equ	06h
+timer$b$high	equ	07h
+tod$sec$60	equ	08h
+tod$sec		equ	09h
+tod$min		equ	0ah
+tod$hrs		equ	0bh
+sync$data	equ	0ch
+int$ctrl	equ	0dh
+cia$ctrl$a	equ	0eh
+cia$ctrl$b	equ	0fh
+CIA$hours	equ	CIA1+tod$hrs
+
+key$row		equ	CIA1+Data$a	; output
+key$col		equ	CIA1+Data$b	; input
+
+
+data$hi		equ	4		; RS232 data line HI
+data$low	equ	0		; RS232 data line LOW
+
+lf$shift$key	equ	80h
+rt$shift$key	equ	10h
+commodore$key	equ	20h
+control$key	equ	04h
+
+type$lower	equ	0
+type$upper	equ	1
+type$shift	equ	2
+type$cntrl	equ	3
+type$field	equ	00000011b
+	
+	page
+
+bnk1	equ	1
+page0	equ	0
+page1	equ	1
+
+MMU$tbl$M	macro
+	db	3fh,3fh,7fh,3eh,7eh		; config reg's
+	db	z80$on,common$8K		; mode & mem
+	db	page0,bnk1,page1,bnk1		; page reg's 
+	endm
+
+	page
+;Š;	ROM functions
+;
+TJMP	macro	x
+	rst 2 ! db x
+	endm
+
+TCALL	macro	x
+	mvi l,x ! rst 4
+	endm
+
+RJMP	macro	x
+	rst 3 ! db x
+	endm
+
+RCALL	macro	x
+	mvi l,x ! rst 5
+	endm
+
+FR$40			equ	2	; offset to 40 column ROM functions
+
+FR$wr$char		equ	00h	; D=char auto advance
+FR$cursor$pos		equ	04h	; B=row, C=column
+FR$cursor$up		equ	08h
+FR$cursor$down		equ	0Ch
+FR$cursor$left		equ	10h
+FR$cursor$rt		equ	14h
+FR$do$cr		equ	18h
+FR$CEL			equ	1Ch
+FR$CES			equ	20h
+FR$char$ins		equ	24h
+FR$char$del		equ	28h
+FR$line$ins		equ	2Ch
+FR$line$del		equ	30h
+FR$color		equ	34h	; B=color
+FR$attr			equ	38h	; B=bit to set/clear, C=bit value
+FR$rd$chr$atr		equ	3Ch	; in  D=row, E=col
+					; out H=row, L=col, B=char, C=attr(real)
+FR$wr$chr$atr		equ	40h	; in  D=row, E=col, B=char, C=attr(real)
+					; out H=row, L=col
+FR$rd$color		equ	44h
+;FR$wr$color		equ	48h
+;			equ	4Ch
+
+	page
+;
+FR$trk$sect		equ	50h
+FR$check$CBM		equ	52h
+FR$bell			equ	54h
+;			equ	56h
+;			equ	58h
+;			equ	5Ah
+;			equ	5Ch
+;			equ	5Eh
+
+FR$trk$40		equ	60hŠFR$set$cur$40		equ	62h
+FR$line$paint		equ	64h
+FR$screen$paint		equ	66h
+FR$prt$msg$both		equ	68h
+FR$prt$de$both		equ	6Ah
+FR$update$it		equ	6Ch
+;			equ	6Eh
+
+FR$ASCII$to$pet		equ	70h
+FR$cur$adr$40		equ	72h
+FR$cur$adr$80		equ	74h
+FR$look$color		equ	76h
+;			equ	78h
+FR$blk$fill		equ	7Ah	; HL passed on the stack
+FR$blk$move		equ	7Ch	; "
+FR$char$inst		equ	7Eh	; "
+
+;
+;	fixed ROM locations
+;
+R$cmp$hl$de		equ	100h-6
+R$write$memory		equ	180h+0
+R$read$memory		equ	180h+3
+R$set$update$adr	equ	180h+6
+R$wait			equ	180h+9
+
+R$status$color$tbl	equ	1000h-246-16
+R$color$convert$tbl	equ	1000h-230-16
+
+	page
+;
+;	Disk type byte definition
+;
+;	bit	7	0=GCR,  1=MFM
+;
+;	    if bit 7 is 1 (MFM)
+;		6	C0=0,	C1=1	(side 2 #, 0 to (n/2)-1 or n/2 to n-1)
+;		5,4	00=128, 01=256, 10=512, 11=1024  byte/sector
+;		3,2,1	disk type (MFM)
+;		0	starting sector # ( 0 or 1)
+;
+;	    if bit 7 is 0 (GCR)
+;		6	unused (set to 0)
+;		5,4	01  (256 byte sectors) (for 1541or 1571)
+;			10  (512 byte sectors) (for 1581)
+;		3,2,1	disk type (GCR)
+;			Type0 = none,  set track and sector as passed
+;			Type1 = C64 CP/M   type disk (1541-71)
+;			Type2 = C128 CP/M  type disk (1541-71) 
+;		0	unused (set to 0)
+
+MFM	equ	1*128
+C0	equ	0*64		; 2nd side start at begining
+C1	equ	1*64		; 2nd side continues from first
+C1$bit	equ	6Š
+Type0	equ	0*2		; (MFM)	top, bottom then next track
+				; 	(TRK# 0 to (34 or 39))
+Type1	equ	1*2		; (MFM)	top (trk 0 even), bottom (trk 1 odd)
+				; 	(TRK# 0 to (69 or 79))
+Type2	equ	2*2		; (MFM)	top TRK# 0 to 39, bottom TRK# 40 to 79 
+				; 	(TRK# on back start at 39 and go to 0)
+Type7	equ	7*2		; (MFM) pass the byte values supplied in @trk
+				;	and @sect
+
+TypeX	equ	7*2
+
+S0	equ	0*1		; start at sector 0
+S1	equ	1*1		; start at sector 1
+
+S128	equ	0*16
+S256	equ	1*16
+S512	equ	2*16
+S1024	equ	3*16
+
+;
+dsk$none	equ	Type0+S256	; access to any sector on the disk
+dsk$c64		equ	Type1+S256
+dsk$c128	equ	Type2+S256
+dsk$1581	equ	Type2+S512
+
+dir$track	equ	18		; C64   disk dir track
+c1581$dir$trk	equ	39		; C1581 disk dir track
+
+	page
+;
+;	6510 commands
+;
+vic$reset	equ	-1	; reboot C128
+vic$init	equ	0	; initilize the bios8502
+vic$rd		equ	1	; read one sector of data (256 bytes) 
+vic$wr		equ	2	; write one sector of data
+vic$rdF		equ	3	; set-up for fast read (many sectors)
+vic$wrF		equ	4	; set-up for fast write
+vic$test	equ	5	; test current disk in drive
+vic$query	equ	6	; get start sectors and #sector/trk
+vic$prt		equ	7	; print data character
+vic$frmt	equ	8	; format a disk (1541)
+vic$user$fun	equ	9
+vic$RM$rd	equ	10	; RAM disk read
+vic$RM$wr	equ	11	; RAM disk write
+
+;
+;	control charactors
+;
+eom		equ	00h
+bell		equ	07h
+bs		equ	08h
+lf		equ	0ah
+cr		equ	0dhŠxon		equ	11h
+xoff		equ	13h
+esc		equ	1bh
+
+

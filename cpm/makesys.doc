@@ -1,0 +1,64 @@
+     MAKESYS.DOC      08May87 CP/M 3.0 on the Commodore 128     28May87
+
+     To generate a new  CPM+.SYS file used by CP/M on the Commodore 128
+follow the procedure listed below.  You will need a 1581 disk drive for
+this task.  Without a 1581,  you will have to make modifications to the
+procedure to suit your system (refer to the MAKESYS instructions on the
+5.25" diskette that accompanies the DRI manual offer).  If you're lucky
+enough to possess a 1750 RAM expander,  you could use it  (drive M:) in
+place of the 1581 work disk. This procedure requires a 400K work space.
+
+1.   Create a 1581 work diskette, using the FORMAT  utility,  or  start
+     with an empty RAMdisk (drive M:).
+
+2.   Copy the following files to the work disk,  using the PIP utility:
+
+     From USER 0:	(these are the utilities you will need)
+                    RMAC.COM
+                    MAC.COM
+                    LINK.COM
+                    GENCPM.COM
+                    ADDBIOS.COM
+                    SUBMIT.COM
+
+     From USER 1:	(these are the data files)
+                    CX80.ASM
+                    CXDISK.ASM
+                    CXEM.ASM
+                    CXEXT.ASM
+                    CXINTR.ASM
+                    CXIO.ASM
+                    CXKEY.ASM
+                    CXKRNL.ASM
+                    CXKYCODE.ASM
+                    CXPRINTE.ASM
+                    CXRAMDSK.ASM
+                    CXSCB.ASM
+                    CXVT.ASM
+                    FAST8502.ASM
+
+                    CPM3.LIB
+                    CXEQU.LIB
+                    MODEBAUD.LIB
+                    X6502.LIB
+                    Z80.LIB
+
+                    BNKBDOS3.SPR
+                    RESBDOS3.SPR
+
+                    CZ.SUB
+                    GENCPM.DAT
+
+3.   Enter 'SUBMIT CZ' and the rest is almost automatic.  Just  answer
+     'Y'  to  all  the  ERASE?  prompts.
+
+4.   When the process is complete,  you will have a CPM+.SYS file that
+     you can copy to any disk from which you want to be able to  boot.
+     You also need to copy the  Console  Command  Processor  (CCP.COM)
+     from USER 0 to the disk from which you want to boot.
+
+5.   Details  regarding  System  Generation  can  be  found in the DRI
+     System Guide. There are several differences to be noted, however,
+     such as somewhat different module names and the implementation of
+     system utilities such as COPYSYS and CPMLDR.
+
