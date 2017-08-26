@@ -1,5 +1,5 @@
 
-	title	'C128 keyboard handler   18 Feb 86'
+        title   'C128 keyboard handler   18 Feb 86'
 
 	maclib	cxequ
 
@@ -708,7 +708,7 @@ compute$adr:
 disp$fun$key:
 	mvi	a,buff$pos
 	sta	offset
-	mvi	a,'>'			; display start prompt '>'
+        mvi     a,'>'                   ; display start prompt '>'
 	call	disp$status
 
 	lhld	msg$ptr
@@ -745,7 +745,7 @@ disp$fun$loop:
 
 
 disp$fun$end:
-	mvi	a,'<'			; display end prompt '<'
+        mvi     a,'<'                   ; display end prompt '<'
 disp$space$fill:
 	call	disp$status
 	lda	offset			; get current cursor position
@@ -950,7 +950,3 @@ hex$key$tbl:
 	db	38h		; 1
 	db	23h		; 0
 
-
-
-
-

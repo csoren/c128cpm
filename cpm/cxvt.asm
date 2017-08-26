@@ -1,7 +1,7 @@
 
 
 
-	title	'Terminal Emulation (VT-100)   18 Feb 86'
+        title   'Terminal Emulation (VT-100)   18 Feb 86'
 
 	maclib	cxequ
 
@@ -36,7 +36,7 @@ lines	equ	24
 ; 
 ;
 ;	ESC =			Keypad mode
-;	ESC >			Keypad mode
+;       ESC >                   Keypad mode
 ;	ESC 7			Save current cursor post and char set
 ;	ESC 8			Restore cursor position and char set
 ;	ESC D			move cursor down one line
@@ -362,7 +362,7 @@ esc$7:		; ESC 7	Save current cursor post and char set
 ;
 ;	place Keypad into Numeric mode
 ;
-esc$gt:		; ESC >	Keypad mode
+esc$gt:         ; ESC > Keypad mode
 	ret
 
 ;
@@ -749,7 +749,7 @@ control$exec$adr:
 ;
 esc$table:
 	db	'='		; ESC =	Keypad mode
-	db	'>'		; ESC >	Keypad mode
+        db      '>'             ; ESC > Keypad mode
 	db	'7'		; ESC 7	Save current cursor post and char set
 	db	'8'		; ESC 8	Restore cursor position and char set
 	db	'D'		; ESC D	move cursor down one line
@@ -776,7 +776,7 @@ esc$exec$adr:
 	dw	esc$DD		; ESC D move cursor down one line
 	dw	esc$8		; ESC 8	Restore cursor position and char set
 	dw	esc$7		; ESC 7	Save current cursor post and char set
-	dw	esc$gt		; ESC >	Keypad mode
+        dw      esc$gt          ; ESC > Keypad mode
 	dw	esc$equ		; ESC =	Keypad mode
 
 ;
@@ -1032,4 +1032,3 @@ set$FR$atr$c:
 set$FR$attr:
 	TJMP	FR$attr
 
-

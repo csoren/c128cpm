@@ -90,23 +90,23 @@ lines	equ	24
 ;
 ; KAYPRO 84 (???) screen commands
 ;
-;	ESC B <num>	turn attrubute on
-;	ESC C <num>	turn attrubute off
+;       ESC B <num>     turn attrubute on
+;       ESC C <num>     turn attrubute off
 ;
-;	where <num> is defined as:
+;       where <num> is defined as:
 ;		0=reverse video
-;		1=	<half intensity>
-;		2=	<blink>
-;		3=	<underline>
+;               1=      <half intensity>
+;               2=      <blink>
+;               3=      <underline>
 ;
-;			<best guess>
+;                       <best guess>
 ;
 ;		The following two sequences are
 ;		 use but I do not know what function
 ;		 they perform.  (added 21 May 86)
 ;
-;	ESC D <num1><num2><num3><num4>
-;	ESC L <num1><num2><num3><num4>
+;       ESC D <num1><num2><num3><num4>
+;       ESC L <num1><num2><num3><num4>
 ;
 	page
 
@@ -351,7 +351,7 @@ esc$E:
 
 	page
 ;
-;	ESC C <num> atribute off
+;       ESC C <num> atribute off
 ;
 esc$C:
 	call	cont$later
@@ -359,7 +359,7 @@ esc$C:
 	jr	esc$num$cont
 
 ;
-;	ESC B <num> atribute on
+;       ESC B <num> atribute on
 ;
 esc$B:
 	call	cont$later
@@ -547,8 +547,8 @@ esc$table:
 	db	'G'		; ESC G 4 Reverse video on
 				; ESC G 2 Blinking on
 				; ESC G 0 Rev. video and blinking off
-	db	'B'		; ESC B <num> atribute on
-	db	'C'		; ESC C <num> atribute off
+        db      'B'             ; ESC B <num> atribute on
+        db      'C'             ; ESC C <num> atribute off
 	db	esc		; ESC ESC
 	db	'D'		; ESC D   ???
 	db	'L'		; ESC L   ???
@@ -563,8 +563,8 @@ esc$exec$adr:
 	dw	esc$L		; ESC L   A kaypro function ???
 	dw	esc$D		; ESC D   A kaypro function ???
 	dw	esc$esc		; ESC ESC ESC color
-	dw	esc$C		; ESC C <num> atribute off
-	dw	esc$B		; ESC B <num> atribute on
+        dw      esc$C           ; ESC C <num> atribute off
+        dw      esc$B           ; ESC B <num> atribute on
 	dw	esc$G		; ESC G 4 Reverse video on
 				; ESC G 2 Blinking on
 				; ESC G 0 Rev. video and blinking off
@@ -604,4 +604,3 @@ esc$num$tbl:
 	dw	esc$g$3		; ESC G3 underline attr on
 	dw	esc$g$4		; ESC G4 reverse video on
 
-

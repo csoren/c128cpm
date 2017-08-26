@@ -1,4 +1,4 @@
-	; This macro library is to be used with DRI's MAC or RMAC
+        ; This macro library is to be used with DRI's MAC or RMAC
 	;   (MAC and RMAC are registered trademarks of Digital Research)
 	;
 	; The code structure is the same as normal 6502 asmabler
@@ -21,7 +21,7 @@
 
 xaaa	macro	@W,@Y,@Z
 	 if	nul @Z
-	  if	@Y<256
+          if    @Y<256
 	   db	@W+4,@Y
 	  else
 	   db	@W+12
@@ -32,7 +32,7 @@ xaaa	macro	@W,@Y,@Z
 	   db	@W,@Y&)
 	  else
 	   if	'&@Z'='X'
-	    if	@Y<256
+            if  @Y<256
 	     db	@W+20,@Y
 	    else
 	     db	@W+28
@@ -54,7 +54,7 @@ xaaa	macro	@W,@Y,@Z
 	     endif
 	    else
 	     if	'&@Z'='#'
-	      if	@Y<256
+              if        @Y<256
 	       db	@W+8,@Y
 	      else
 	       db	@W,0,0
@@ -72,7 +72,7 @@ xbb	macro	@W,@Y,@Z
 	 if	not nul @Z
 	  @A	set 16
 	  if	(@W=86h) or (@W=84h)
-	   if	@Y>256
+           if	@Y>256
 	    'Error'
 	   endif
 	  endif
@@ -95,7 +95,7 @@ xbbb	macro	@W,@Y,@Z
 	   if	'&@Y'='A'
 	    db	@W+8
 	   else
-	    if	@Y<256
+            if  @Y<256
 	     db	@W+4,@Y
 	    else
 	     db	@W+12
@@ -103,7 +103,7 @@ xbbb	macro	@W,@Y,@Z
 	    endif
 	   endif
 	  else	
-	   if	@Y<256
+           if   @Y<256
 	    db	@W+4,@Y
 	   else
 	    db	@W+12
@@ -111,7 +111,7 @@ xbbb	macro	@W,@Y,@Z
 	   endif
 	  endif
 	 else
-	  if	@Y<256
+          if    @Y<256
 	   db	@W+20,@Y
 	  else
 	   db	@W+28
@@ -122,7 +122,7 @@ xbbb	macro	@W,@Y,@Z
 
 xcc	macro	@W,@Y,@Z
 	 if	NUL @Z
-	  if	@Y<256
+          if    @Y<256
 	   db	@W+4,@Y
 	  else
 	   db	@W+12
@@ -139,7 +139,7 @@ xcc	macro	@W,@Y,@Z
 
 xddd	macro	@W,@Y,@Z
 	 if	NUL @Z
-	  if	@Y<256
+          if    @Y<256
 	   db	@W+4,@Y
 	  else
 	   db	@W+12
@@ -149,7 +149,7 @@ xddd	macro	@W,@Y,@Z
 	  if	'&@Z'='#'
 	   db	@W,@Y
 	  else
-	   if	@Y<256
+           if   @Y<256
 	    db	@W+20,@Y
 	   else
 	    db	@W+28
@@ -186,7 +186,7 @@ xddd	macro	@W,@Y,@Z
 	endm
 
 @bit	macro	@u
-	 if	@u<256
+         if     @u<256
 	  db	24h,@u
 	 else
 	  db	2ch
@@ -405,4 +405,4 @@ xddd	macro	@W,@Y,@Z
 @skip2	macro
 	db	02ch
 	endm
-
+

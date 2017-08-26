@@ -1,4 +1,4 @@
-	title	'Root module of relocatable BIOS for CP/M 3.0 28 Aug 85'
+        title   'Root module of relocatable BIOS for CP/M 3.0 28 Aug 85'
 
 ; version 1.0	5 Sept 84
 
@@ -50,8 +50,8 @@ ccp	equ	0100h			; Console Command Processor
 
 ; user defined character I/O routines
 
-	extrn	?ci,?co,?cist,?cost	; each take device in <B>
-	extrn	?cinit			; (re)initialize device in <C>
+        extrn   ?ci,?co,?cist,?cost     ; each take device in <B>
+        extrn   ?cinit                  ; (re)initialize device in <C>
 	extrn	@ctbl			; physical character device table
 
 ; disk communication data items
@@ -169,7 +169,7 @@ d$init$loop:
 	jrz	d$init$next	; if null, no drive
 
 	push	h		; save @drv pointer 
-	xchg			; XDPH address in <HL>
+        xchg                    ; XDPH address in <HL>
 	dcx	h
 	dcx	h
 	mov	a,m
@@ -245,7 +245,7 @@ getdrv:
 
 ;
 ; CONOUT
-;	Console Output.  Send character in <C>
+;       Console Output.  Send character in <C>
 ;			to all selected devices
 conout:	
 	lhld	@covec		; fetch console output bit vector
@@ -254,7 +254,7 @@ conout:
 
 ;
 ; AUXOUT
-;	Auxiliary Output. Send character in <C>
+;       Auxiliary Output. Send character in <C>
 ;			to all selected devices
 auxout:
 	lhld	@aovec		; fetch aux output bit vector
@@ -263,7 +263,7 @@ auxout:
 
 ;
 ; LIST
-;	List Output.  Send character in <C>
+;       List Output.  Send character in <C>
 ;			to all selected devices.
 list:
 	lhld	@lovec		; fetch list output bit vector
@@ -351,7 +351,7 @@ coster:				; check for output device ready,
 	dad	d		; make address of mode byte
 	mov	a,m
 	ani	mb$xonxoff
-	pop	h		; recover console number in <HL>
+        pop     h               ; recover console number in <HL>
 	jz	?cost		; not a xon device, go get output status direct
 	lxi	d,xofflist
 	dad	d		; make pointer to proper xon/xoff flag
@@ -371,7 +371,7 @@ not$s:
 	ana	m		; and mask with ctl-Q/ctl-S flag
 	ret			; return this as the status
 
-cist1:				; get input status with <BC> and <HL> saved
+cist1:                          ; get input status with <BC> and <HL> saved
 	push	b
 	push	h 
 	call	?cist
@@ -380,7 +380,7 @@ cist1:				; get input status with <BC> and <HL> saved
 	ora	a
 	ret
 
-cost1:				; get output status, saving <BC> & <HL>
+cost1:                          ; get output status, saving <BC> & <HL>
 	push	b
 	push	h
 	call	?cost
@@ -389,7 +389,7 @@ cost1:				; get output status, saving <BC> & <HL>
 	ora	a
 	ret
 
-ci1:				; get input, saving <BC> & <HL>
+ci1:                            ; get input, saving <BC> & <HL>
 	push	b
 	push	h
 	call	?ci
@@ -472,8 +472,8 @@ ci$rdy:
 ;	Utility Subroutines
 
 
-?pmsg:				; print message @<HL> up to a null
-				; saves <BC> & <DE>
+?pmsg:                          ; print message @<HL> up to a null
+                                ; saves <BC> & <DE>
 	push	b
 	push	d
 pmsg$loop:
@@ -491,7 +491,7 @@ pmsg$exit:
 	pop	b
 	ret
 
-?pdec:				; print binary number 0-65535 from <HL>
+?pdec:                          ; print binary number 0-65535 from <HL>
 	lxi	b,table10
 	lxi	d,-10000
 next:
@@ -567,11 +567,11 @@ xofflist:
 ;	Disk I/O interface routines
 ;
 ; SELDSK
-;	Select Disk Drive.  Drive code in <C>.
+;       Select Disk Drive.  Drive code in <C>.
 ;		Invoke login procedure for drive
 ;		if this is first select.  Return
 ;		address of disk parameter header
-;		in <HL>
+;               in <HL>
 seldsk:
 	mov	a,c
 	sta	@adrv			; save drive select code
@@ -590,7 +590,7 @@ seldsk:
 	ani	1
 	jrnz	not$first$select	; examine login bit
 	push	h
-	xchg				; put pointer in stack & <DE>
+        xchg                            ; put pointer in stack & <DE>
 	lxi	h,-2
 	dad	d
 	mov	a,m
@@ -616,7 +616,7 @@ home:
 
 ;
 ; SETTRK
-;	Set Track. Saves track address from <BC> 
+;       Set Track. Saves track address from <BC>
 ;		in @TRK for further operations.
 settrk:
 	mov	l,c
@@ -627,7 +627,7 @@ settrk:
 
 ;
 ; SETSEC
-;	Set Sector.  Saves sector number from <BC>
+;       Set Sector.  Saves sector number from <BC>
 ;		in @sect for further operations.
 setsec:
 	mov	l,c
@@ -639,7 +639,7 @@ setsec:
 ;
 ; SETDMA
 ;	Set Disk Memory Address.  Saves DMA address
-;		from <BC> in @DMA and sets @DBNK to @CBNK
+;               from <BC> in @DMA and sets @DBNK to @CBNK
 ;		so that further disk operations take place
 ;		in current bank.
 setdma:
@@ -662,9 +662,9 @@ setbnk:
 ;
 ;	
 ; SECTRN
-;	Sector Translate.  Indexes skew table in <DE>
-;		with sector in <BC>.  Returns physical sector
-;		in <HL>.  If no skew table (<DE>=0) then
+;       Sector Translate.  Indexes skew table in <DE>
+;               with sector in <BC>.  Returns physical sector
+;               in <HL>.  If no skew table (<DE>=0) then
 ;		returns physical=logical.
 sectrn:
 	mov	l,c
@@ -760,4 +760,3 @@ sector$msg:	db	', S-',0
 
 
 	end
-

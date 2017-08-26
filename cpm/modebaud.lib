@@ -1,4 +1,4 @@
-	; equates for mode byte bit fields
+        ; equates for mode byte bit fields
 
 mb$input		equ 0000$0001b	; device may do input
 mb$output		equ 0000$0010b	; device may do output
@@ -29,5 +29,3 @@ baud$7200		equ 13		; 7200 baud
 baud$9600		equ 14		; 9600 baud
 baud$19200		equ 15		; 19.2k baud
 
-
-

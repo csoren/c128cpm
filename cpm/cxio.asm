@@ -34,9 +34,9 @@ bdos	equ	5
 
 ; Utility routines in standard BIOS
 	extrn	?wboot		; warm boot vector
-	extrn	?pmsg		; print message @<HL> up to 00
-				; saves <BC> & <DE>
-	extrn	?pdec		; print binary number in <A> from 0 to 99.
+        extrn   ?pmsg           ; print message @<HL> up to 00
+                                ; saves <BC> & <DE>
+        extrn   ?pdec           ; print binary number in <A> from 0 to 99.
 	extrn	?pderr		; print BIOS disk error header
 	extrn	?conin,?cono	; con in and out
 	extrn	?const		; get console status
@@ -714,7 +714,8 @@ load$ccp:
 	inr	a
 	jrz	no$CCP		; error if no file...
 	lxi	d,0100h
-	call	setdma		; start of TPAŠ	lxi	d,128
+	call	setdma		; start of TPA
+	lxi	d,128
 	call	setmulti	; allow up to 16K bytes
 	lxi	d,ccp$fcb
 	call	read
@@ -763,7 +764,8 @@ save$ccp:
 ;	lda	fcb$rc		; get the record count
 ;	sta	ccp$count	; save for later
 ;	lxi	d,0100h
-;	call	setdma		; start of TPAŠ;	lxi	d,128
+;	call	setdma		; start of TPA
+;	lxi	d,128
 ;	call	setmulti	; allow up to 16K bytes
 ;	lxi	d,ccp$fcb
 ;	call	read
@@ -916,7 +918,7 @@ max$devices	equ	(($-number$drivers)/2)-1
 ;
 ;
 ;
-?ciº				» characteò input
+?ci:				; character input
 	call	vector$io	; jump with table adr on stack
 	dw	key$board$in	; keys
 	dw	rret		; 80col
@@ -1197,7 +1199,7 @@ set$hr:
 	mov	c,a
 	mov	a,b
 	sta	old$hr
-	cmp	c			; if @hour<old$hr
+        cmp     c                       ; if @hour<old$hr
 	jrnc	same$day
  
 	push	h
@@ -1390,4 +1392,4 @@ not$bank$0:
 	ret
 
 	end
-
+

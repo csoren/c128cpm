@@ -1,4 +1,4 @@
-	title	'CXKYCODE-  function and key def file   26 May 85'
+        title   'CXKYCODE-  function and key def file   26 May 85'
 
 
 	maclib	cxequ
@@ -110,10 +110,10 @@ ascii$tbl:
 	db	70h,50h,50h,10h		; P
 	db	6ch,4ch,4ch,0ch		; L
 	db	2dh,2dh,2dh,00h		; -
-	db	2eh,2eh,3eh,00h		; . >
+        db      2eh,2eh,3eh,00h         ; . >
 	db	3ah,3ah,5bh,7bh		; : [ {
 	db	40h,40h,40h,00h		; @
-	db	2ch,2ch,3ch,00h		; , <
+        db      2ch,2ch,3ch,00h         ; , <
 
 	db	23h,23h,23h,60h		; pound `
 	db	2ah,2ah,2ah,00h		; *
@@ -125,7 +125,7 @@ ascii$tbl:
 	db	2fh,2fh,3fh,5ch		; / ? \
 
 	db	31h,31h,21h,0A0h	; 1
-	db	5fh,5fh,5fh,7fh		; <-
+        db      5fh,5fh,5fh,7fh         ; <-
 	db	09h,15h,30h,00h		; (CONTROL) sound1 sound2
 	db	32h,32h,22h,0A1h	; 2 "
 	db	20h,20h,20h,00h		; Space
@@ -169,4 +169,3 @@ ascii$tbl:
 	db	088h,099h,0aah,0bbh	
 	db	0cch,0ddh,0eeh,0ffh
 
-

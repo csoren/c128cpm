@@ -12,9 +12,9 @@
 
 
 ; Utility routines in standard BIOS
-	extrn	?pmsg		; print message @<HL> up to 00
-				; saves <BC> & <DE>
-	extrn	?pdec		; print binary number in <A> from 0 to 99.
+        extrn   ?pmsg           ; print message @<HL> up to 00
+                                ; saves <BC> & <DE>
+        extrn   ?pdec           ; print binary number in <A> from 0 to 99.
 	extrn	?pderr		; print BIOS disk error header
 	extrn	?conin,?cono	; con in and out
 	extrn	?const		; get console status
@@ -89,7 +89,7 @@ RM$write:
 	ana	a
 	lhld	@dma
 	jrz	RM$do$rd$wr
-	call	?dkmov+3	; A<>0 transfers data from local$DMA to buffer
+        call    ?dkmov+3        ; A<>0 transfers data from local$DMA to buffer
 	mvi	d,VIC$RM$wr
 	jr	RM$do$rd$wr$buf
 ;
@@ -244,4 +244,3 @@ dir$label:	;123456789012  3 4 5 6
 	dw	date$hex,0
 	dw	date$hex,0
 
-

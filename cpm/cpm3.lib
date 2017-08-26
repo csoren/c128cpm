@@ -1,6 +1,6 @@
-;	Macro Definitions for CP/M3 BIOS Data Structures.
+;       Macro Definitions for CP/M3 BIOS Data Structures.
 
-	; dtbl	<dph0,dph1,...>		- drive table
+        ; dtbl  <dph0,dph1,...>         - drive table
 
 	; dph	translate$table,	- disk parameter header
 	;	disk$parameter$block,
@@ -101,7 +101,7 @@ dpb macro ?psize,?pspt,?trks,?bls,?ndirs,?off,?ncks
     ?dsm	set ?size/(?bls/128)-1
 
     ?exm	set ?bls/1024
-	if ?dsm > 255
+        if ?dsm > 255
 	    if ?bls = 1024
 .'Error, can''t have this size disk with 1k block size'
 	    exitm
@@ -166,7 +166,7 @@ skew macro ?secs,?skf,?fsc
 	rept ?secs	;;once for each sector
 	db	?nxtsec+?fsc
 	?nxtsec	set ?nxtsec+?skf
-	    if ?nxtsec >= ?secs
+            if ?nxtsec >= ?secs
 	    ?nxtsec	set ?nxtsec-?secs
 	    endif
 	?nelts	set ?nelts-1
@@ -177,4 +177,4 @@ skew macro ?secs,?skf,?fsc
 	    endif
 	endm
     endm
-
+

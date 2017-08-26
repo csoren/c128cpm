@@ -50,7 +50,8 @@ start	set	start+for
 ;
 bios02		equ	3000h	;
 block$buffer	equ	3400h	; uses 2K
-boot$parm	equ	3C00h	; uses about 256 bytesŠ;
+boot$parm       equ     3C00h   ; uses about 256 bytes
+;
 ; bank 0 low memory map
 ;
 ROM		equ	0000h
@@ -104,13 +105,14 @@ space	cur$drv,1		;  current disk installed to Vir. drive
 space	fast,1			;  bit 0 set, drv 0 is fast. ect. 
 
 space	key$tbl,2		;; pointer to keyboard table
-space	fun$tbl,2		;; pointer to function tableŠspace	color$tbl$ptr,2		;; pointer to logical color table
-space	fun$offset,1		;; function # to be preformed
+space   fun$tbl,2               ;; pointer to function table
+space   color$tbl$ptr,2         ;; pointer to logical color table
+space   fun$offset,1            ;; function # to be preformed
 space	sound$1,2		;;
 space	sound$2,2		;;
 space	sound$3,2		;;
 
-space	@trk,2			;; current track number
+space   @trk,2                  ;; current track number
 space	@dma,2			;; current DMA address
 ;
 ; below here not used by ROM
@@ -158,7 +160,8 @@ space	RS232$status,1		; bit 7, 1=send data, 0=no data
 				; bit 1, 1=receiving data
 				; bit 0, 1=Data byte ready
 
-space	xmit$data,1		; data byte to sendŠspace	recv$data,1		; received data byte
+space   xmit$data,1             ; data byte to send
+space   recv$data,1             ; received data byte
 
 ;
 ; The following equates are used by the interrupt driven keyboard handler
@@ -212,7 +215,8 @@ space	rev$40,1		;;
 ;===> 80 column position and color storage
 space	char$adr,2		;;
 space	char$col,1		;;
-space	char$row,1		;;Šspace	current$atr,1		;;
+space   char$row,1              ;;
+space   current$atr,1           ;;
 space	bg$color$80,1		;;
 space	char$color$80,1		;;
 ;	ROM uses localtions above this point
@@ -266,7 +270,8 @@ space	boot$stack,0		; allow 64 bytes of stack
 ;===> special equates used by CXKEY
 special		equ	00010111b
 SF$exit		equ	001h		; RETURN KEY
-SF$insert	equ	028h		; PLUS KEYŠSF$delete	equ	02Bh		; MINUS KEY
+SF$insert	equ	028h		; PLUS KEY
+SF$delete	equ	02Bh		; MINUS KEY
 alpha$toggle	equ	03Dh		; commodore key
 alt$key		equ	050h		; alterant key
 SF$left		equ	055h		; left arrow key
@@ -320,7 +325,8 @@ common$4K	equ	09h		; top  4K common
 common$8K	equ	0ah		; top  8K common
 common$16K	equ	0bh		; top 16K common
 
-;===> preconfiguration mapsŠforce$map	equ	0ff00h
+;===> preconfiguration maps
+force$map       equ     0ff00h
 bank$0		equ	0ff01h		; 3fh
 bank$1		equ	0ff02h		; 7fh
 io		equ	0ff03h		; 3eh
@@ -342,7 +348,7 @@ DS$color	equ	26
 ;===> status bits
 DS$ready	equ	80h
 DS$lt$pen	equ	40h
-;===> display memory layout  (16K) 0-3fffh 
+;===> display memory layout  (16K) 0-3fffh
 DS$screen	equ	0000h
 DS$attribute	equ	0800h
 DS$char$def	equ	2000h
@@ -374,8 +380,8 @@ med$gray	equ	12
 lt$green	equ	13
 lt$blue		equ	14
 lt$grey		equ	15
-Š	page
 
+      page
 RM$status	equ	RAM$dsk$base	;read only register
 ;   bit 7	Interrupt pending if 1
 ;	6	Transfer complete if 1
@@ -392,9 +398,9 @@ RM$command	equ	RAM$dsk$base+1	;r/w
 ;			next byte to read/write.)
 ;	4	disable FF00 decode if set (do operation after command writen)
 ;	3,2	reserved
-;	1,0	00 = transfer C128 --> Ram Disk
-;		01 = Transfer C128 <-- Ram Disk
-;		10 = swap     C128 <-> Ram Disk
+;       1,0     00 = transfer C128 --> Ram Disk
+;               01 = Transfer C128 <-- Ram Disk
+;               10 = swap     C128 <-> Ram Disk
 ;		11 = Verify   C128  =  Ram Disk
 ;
 RM$128$low	equ	RAM$dsk$base+2	;r/w
@@ -428,7 +434,8 @@ RM$control	equ	RAM$dsk$base+10	;r/w
 ;   bit	7,6    	00	Increment both addresses  (default)
 ;		01	Fix expansion address
 ;		10	Fix C128 address
-;		11	Fix both addressesŠ;
+;               11      Fix both addresses
+;
 
 	page
 ;===> CIA equates
@@ -482,7 +489,8 @@ MMU$tbl$M	macro
 	endm
 
 	page
-;Š;	ROM functions
+;
+;    ROM functions
 ;
 TJMP	macro	x
 	rst 2 ! db x
@@ -536,7 +544,8 @@ FR$bell			equ	54h
 ;			equ	5Ch
 ;			equ	5Eh
 
-FR$trk$40		equ	60hŠFR$set$cur$40		equ	62h
+FR$trk$40               equ     60h
+FR$set$cur$40           equ     62h
 FR$line$paint		equ	64h
 FR$screen$paint		equ	66h
 FR$prt$msg$both		equ	68h
@@ -590,7 +599,8 @@ R$color$convert$tbl	equ	1000h-230-16
 MFM	equ	1*128
 C0	equ	0*64		; 2nd side start at begining
 C1	equ	1*64		; 2nd side continues from first
-C1$bit	equ	6Š
+C1$bit  equ     6
+
 Type0	equ	0*2		; (MFM)	top, bottom then next track
 				; 	(TRK# 0 to (34 or 39))
 Type1	equ	1*2		; (MFM)	top (trk 0 even), bottom (trk 1 odd)
@@ -644,8 +654,8 @@ eom		equ	00h
 bell		equ	07h
 bs		equ	08h
 lf		equ	0ah
-cr		equ	0dhŠxon		equ	11h
+cr              equ     0dh
+xon             equ     11h
 xoff		equ	13h
 esc		equ	1bh
 
-

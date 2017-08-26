@@ -37,9 +37,9 @@
 
 ; Utility routines in standard BIOS
 	extrn	?wboot		; warm boot vector
-	extrn	?pmsg		; print message @<HL> up to 00
-				; saves <BC> & <DE>
-	extrn	?pdec		; print binary number in <HL> from 0 to 65535
+        extrn   ?pmsg           ; print message @<HL> up to 00
+                                ; saves <BC> & <DE>
+        extrn   ?pdec           ; print binary number in <HL> from 0 to 65535
 	extrn	?pderr		; print BIOS disk error header
 	extrn	?conin,?cono	; con in and out
 	extrn	?const		; get console status
@@ -560,7 +560,7 @@ dsk$B$out:
 ;	disk transfer bank	in @dbnk (8 bits)
 ;	disk track address	in @trk (16 bits)
 ;	disk sector address	in @sect (16 bits)
-;	pointer to XDPH in <DE>
+;       pointer to XDPH in <DE>
 ;
 ;   return with an error code in <A>
 ; 	A=0	no errors
@@ -976,7 +976,7 @@ do$type$7:
 set$up$c64:
 	sta	VIC$sect	;
 	lda	@trk		;
-	cmp	b		; carry=1 if A < dir$track
+        cmp     b               ; carry=1 if A < dir$track
 	cmc			; add one if dir$track or more (carry not set)
 	aci	0		; add the carry bit in
 	sta	vic$trk
@@ -991,7 +991,7 @@ c1581$adj:
 	sta	vic$count
 
 	lda	@trk		;
-	cpi	C1581$dir$trk*2	; carry=1 if A < dir$track
+        cpi     C1581$dir$trk*2 ; carry=1 if A < dir$track
 	cmc			; add one if dir$track or more (carry not set)
 	aci	0		; add the carry bit in
 	rar			; track=@trk/2 ; carry set if odd
@@ -1128,7 +1128,7 @@ rd$1571$wait:
 	bit	3,c
 	jz	rd$1571$wait
 	mvi	c,0ch			; D1SDR
-	ini				; (hl) <- (bc) ; hl <- hl+1 ; b <- b-1
+        ini                             ; (hl) <- (bc) ; hl <- hl+1 ; b <- b-1
 	jmp	rd$1571$next
 
 
@@ -1255,7 +1255,7 @@ wait$status:
 ;	This routine is used to move a sector of data
 ;	 to/from the sector buffer and the DMA pointer.
 ;	     A=0 for buffer to DMA  (disk read)
-;	     A<>0 for DMA to buffer (disk write)
+;            A<>0 for DMA to buffer (disk write)
 ;
 	CSEG
 ?dkmov:
@@ -1774,5 +1774,3 @@ status$atr	equ	0
 offset:		db	0
 
 	end
-
-

@@ -375,7 +375,7 @@ clk$hi:
 ;	secondary address in vic$trk
 ;	the logical file number is equal to the device #
 ;	if VIC$count=0 then output character in VIC$data
-;	if VIC$count<>0 then output characters pointered to by @buffer
+;       if VIC$count<>0 then output characters pointered to by @buffer
 ;
 PRINT:				;**CMD ENTRY**
 	@lda	vic$drv		;-K
@@ -919,4 +919,3 @@ query$cmd:	equ	10001010b
 query$cmd$lng	equ	4		; U0+cmd+(track offset)
 
 
-
