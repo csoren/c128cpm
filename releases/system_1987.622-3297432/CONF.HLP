@@ -1,0 +1,135 @@
+Help is available on the following subjects:                       21 Jan 85
+
+	40COL	BAUD	BACK	BORD	CHAR	CURSOR
+	DATE	DRV	DUMP	FEEL	HELP	MAP
+	PARITY	POKE	PRT	REPEAT	VOL
+
+	40COL		=ON, OFF
+
+This Command is used to turn the 40 column display ON or OFF.  The 40 column
+display slows the system  down about 10%.  By  turning it off the the system
+will run a little faster.
+
+	BAUD		=50,75,110,134,150,300,600,1200
+
+The modem port BAUD rate  may be  changed with this command.  Setting the BAUD
+rate also changes FEEL and to a lesser  extent  REPEAT.   As the  baud rate is
+increased the amount of time that the processor has to do things is decreased.
+The system handles the serial port using interrupts.  The number of interrupts
+per second is 3 times the  baud rate.  See FEEL for more info.
+
+	BACK		=<color#>
+
+Set current screen Background color to color supplied.
+
+	BORD		=<color#>
+
+Set current screen Border color (40 column screen only) to color supplied.
+
+	CHAR		=<color#>
+
+Set current screen Character color to color supplied.
+
+	CURSOR		= {solid, slow or fast} followed by start (space) end
+
+Sets the 80 column display cursor to solid or flash (slow or fast).  The user
+may also include one  or two optional  parameters that  set the start and end
+scan line for  the cursor.  This can be used to create an underline cursor or
+a strike thru cursor.
+ CURSOR=FAST 4 will start the cursor at scan line 4 and end on scan line 7. 
+ CURSOR=FAST 0 4 will give a half cursor at top of line.
+ CURSOR=FAST 7 will give an underline cursor.
+
+	DATE		=[<month>/<day>/<year>] [<hour>[:<min>]]
+
+This command is used to show the current date and time (if no parameters are
+supplied) or set a new time and/or date.
+DATE   will show the current date and time.
+DATE 10: will set 10:00:00 with the current date
+DATE 10:45 1/21/85 will set the time and date as shown.
+
+	DRV<letter>   A,B,C,D	=8-0, 8-1, 9-0, 9-1, 10-0, 10-1, 11-0, 11-1
+
+This command  is used to  allow a DUAL disk drive to be used.  The system
+defaults drive 8-0 to A, 9-0 to B, 10-0 to C and 11-0 to D. If you have a
+DUAL drive it is numbered 8-0 and 8-1.  With  this command you can change
+any drive to use 8-1.
+DRVC=8-1		will set drive 8-1 to be used as C
+DRVB=10-0,DRVC=10-1	will set dual drive #10 as drive B and C
+
+	DUMP xxxx  (address to dump in HEX)
+
+This command will dump 16 bytes of memory starting from the HEX address 
+supplied. This is NOT the TPA memory (bank 1) but instead is RAM BANK 0
+which is the operation system area.
+
+	FEEL		=0,1...
+
+    Feel is a parameter that adjust the way the keyboard feels.  The keyboard
+is scanned with interrupts (the same interrupts that handle the serial port).
+Thus  as the  BAUD rate  is  increased  the number  of  key  scans per second
+increases.  To  get around this  problem not every interrupt is  used to scan
+the keyboard.  FEEL  sets the number of interrupts that  are not used between
+each one that is used.  As the number of key scans is increased the processor
+slows down. The FEEL parameter is changed when ever the BAUD rate is changed.
+The  default  values are  set to  try  to keep about 300 keyboard  scans  per
+second.  (At 300 BAUD, FEEL is defaulted to 2).  NOTE: The FEEL value for 600
+and 1200 BAUD are adjusted as follows:
+	@600 ADJ=((FEEL+1)*2)-1   and   @1200 ADJ=((FEEL+1)*4)-1 
+
+	HELP		(=topic)
+
+This HELP file  (CONF.HLP)  works with  CONF.COM  dated  21 Jan 85. There are
+two ways to  use HELP.  One way is to type  CONF HELP  which  will  place you
+at a  prompt which  will allow you to select  the  topic about which you want
+information.  The other way is to use help on a command line as follows:
+	CONF HELP=topic
+where topic is the specific topic about which you want information.
+
+CONF is designed so that multiple commands  and associated  parameters can be
+specified on a single line as shown in the following example:
+	CONF char=2,help=feel,repeat=0
+sets character color to red, gives help on feel and turns keyboard repeat off.
+
+	MAP		(map character sets)
+
+This command will display both the primary and the alternate character sets.
+
+	PARITY		=<number><parity><stops>
+
+The serial data  can be  sent or received with a number of options.  The normal
+and default value is 8 bits, no parity, 1 stop bit (8N1).  This command  allows
+you to set the  number of bits to 7 or 8. The  parity to Odd, Even, Mark, Space
+or None (only the first letter is used). and the number of stop bits to 1 or 2.
+
+	POKE xxxx	=byte,[byte,byte,....,byte]
+
+This command will allow the user to change bytes within the operating system.
+Care must be  taken because with this command you can BOMB your system.  This
+command works with  BANK 0 and NOT the TPA  (bank 1).  The address range that
+can be changed in 1000 to FEFF, below 1000h is ROM.
+POKE 4000=41 42 43 44 45	will write 41 to 4000 and 42 to 4001 etc.
+POKE 4000=4142434445		will do the same as the above line
+
+	PRT
+	PRT1 or PRT2	= CBM, ASCII(secondary adr), MPS1000(in IBM mode)
+
+This command allows you  to specify  whether true ASCII or PET ASCII will be
+sent to a  printer on  the serial port.  The CBM parameter selects PET ASCII
+with a secondary address of 7. (A secondary address of 7 selects upper/lower
+case).  The  ASCII parameter selects true  ASCII and  defaults the secondary
+address to 0.  If a number follows the command  it is used  as the secondary
+address. The MPS1000 printer can be placed in true ASCII mode by placing DIP
+switches 1 and 3 on and using the MPS1000 selection (same as =ASCII 128).
+
+	REPEAT		=0,1,....
+
+This command sets the rate at which keys will repeat. A parameter of 0 turns
+off repeat; otherwise, the lower the number, the faster the repeat.
+
+	VOL		=0,1,2,3,4,5,6,7,...,15
+
+This command  sets the volume of  the  keyclicks as specified by the associated
+parameter. (0 turns the volume off; 15 sets the loudest keyclick; default is 6)
+
+

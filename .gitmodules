@@ -1,3 +1,6 @@
 [submodule "runcpm"]
 	path = runcpm
 	url = https://github.com/csoren/RunCPM
+[submodule "ctools"]
+	path = ctools
+	url = https://csoren@bitbucket.org/csoren/ctools.git
