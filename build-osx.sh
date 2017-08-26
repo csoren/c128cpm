@@ -33,6 +33,7 @@ for i in *; do mv -f "$i" "$(echo $i|tr a-z A-Z)"; done
 
 cd ../..
 
+# Build CPM+.SYS
 $runcpm <<EOF
 submit cz
 exit
@@ -40,6 +41,7 @@ EOF
 
 cd ..
 
+# Build disk image
 DISTRIBUTION=releases/system_1987.622-3297432
 FILES="CCP.COM HELP.COM HELP.HLP CONF.COM CONF.HLP KEYFIG.COM KEYFIG.HLP C1571.COM COPYSYS.COM FORMAT.COM SCREEN40.COM PIP.COM READ.ME"  
 
