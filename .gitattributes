@@ -5,6 +5,7 @@
 *.asm text eol=crlf
 *.lib text eol=crlf
 *.sub text eol=crlf
+*.sh text eol=lf
 
 # Denote all files that are truly binary and should not be modified.
 *.png binary
