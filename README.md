@@ -12,7 +12,7 @@ Currently only CPM+.SYS is built from source, while the rest of the binaries are
 
 If everything goes well, a new image cpm+128.d71 is created.
 
-### Unix, Linux, WSL
+### Other unixes - Linux, WSL (Windows 10)
 
 It's possible to use the Windows Subsystem for Linux to build. Tested with Ubuntu on Windows 10, you'll need the following packages
 
