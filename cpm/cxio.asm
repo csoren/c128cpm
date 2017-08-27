@@ -28,20 +28,25 @@ bdos	equ	5
 	extrn	@civec,@covec,@aivec,@aovec,@lovec
 	extrn 	?bnksl
 
-	public	?cinit,?ci,?co,?cist,?cost
+	public	?cinit,?ci,?co,?cist,?cost,?kbin,?kbstat
+	public	?out$RS232,?out$st$RS232,?in$RS232,?in$st$RS232
+	public	?init$RS232
 	public	@ctbl
 	extrn	?kyscn
 
 ; Utility routines in standard BIOS
 	extrn	?wboot		; warm boot vector
-        extrn   ?pmsg           ; print message @<HL> up to 00
-                                ; saves <BC> & <DE>
-        extrn   ?pdec           ; print binary number in <A> from 0 to 99.
+	extrn	?pmsg		; print message @<HL> up to 00
+				; saves <BC> & <DE>
+	extrn	?pdec		; print binary number in <A> from 0 to 99.
 	extrn	?pderr		; print BIOS disk error header
 	extrn	?conin,?cono	; con in and out
 	extrn	?const		; get console status
 
 	extrn	@hour,@min,@sec,@date,?bnksl
+
+;       public	bios$stack
+
 	public	?time
 
 	page
@@ -53,12 +58,12 @@ bdos	equ	5
 ;
 ;	links to 80 column display
 ;
-	extrn	?out80,?int80
+	extrn	?out80,?int80,start$checking
 	extrn	?out40,?int40
 
 	extrn	?pt$i$1101,?pt$o$1,?pt$o$2
-	extrn	?convt
-;	extrn	?pt$s$1101
+	extrn	?convt,?cnvt$none
+	extrn	?pt$s$1,?pt$s$2
 
 ;
 ;	bios8502 function routines
@@ -114,13 +119,7 @@ bdos	equ	5
 	DSEG
 ?fun65:
 	sta	vic$cmd			; save the command passed in A
-   if	not use$6551
-fun$di$wait:
-	lda	RS232$status
-	ani	11000010b		; char to Xmit, Xmiting or receiving ?
-	jrnz	fun$di$wait		; yes, wait for int to clean up
-   endif
-	di
+	call	?di$int                 ; cleanly disable int
 	lda	force$map		; get current MMU configuration
 	push	psw			; save it
 	sta	io$0			; make I/O 0 current
@@ -193,9 +192,9 @@ init$mmu$loop:
 	dcr	d
 	jrnz	init$mmu$loop
 
-	mvi	a,1			; enable track and sector status
+	xra	a			; disable track and sector status
 	sta	stat$enable		; on the status line
-;	mvi	a,1			; no parity, 8 bits, 1 stop bit
+	inr	a			; no parity, 8 bits, 1 stop bit
 	sta	XxD$config
 ;
    if	use$6551
@@ -205,8 +204,9 @@ init$mmu$loop:
    endif
 	shld	usart$adr
 
-	lxi	h,?convt
+	lxi	h,?cnvt$none
 	shld	prt$conv$1
+	lxi	h,?convt
 	shld	prt$conv$2
 
 	lxi	h,Fx$V$tbl
@@ -214,31 +214,40 @@ init$mmu$loop:
 ;
 ; install I/O assignments
 ;
+	lxi	h,start$checking
+	shld	parm$area$80
+	shld	parm$area$40
 	lxi	h,4000h+2000h 		; 80 and 40 column drivers
 	shld	@covec
 	mvi	h,80h
 	shld	@civec			; assign console input to keys
 	mvi	h,10h
 	shld	@lovec			; assign printer to LPT:
-	mvi	h,00h
+    if	use$6551                        ; assign 6551 or RS232 to rdr/pun
+	mvi	h,04h
+    else
+	mvi	h,02h
+    endif
 	shld	@aivec
-	shld	@aovec			; assign rdr/pun port
+	shld	@aovec                 
 
 	page
 ;
 ; print sign on message
 ;
+	mov	c,l                     ; (C=0)
+	call	?out40
 	call	prt$msg			; print signon message
 	db	'Z'-'@'			; initialize screen pointers
 	db	esc,esc,esc
-	db	purple+50h		; set character color
+	db	lt$grey+50h             ; set character color
 	db	esc,esc,esc
-	db	black+60h		; set background (BG) color
+	db	blue+60h                ; set background (BG) color
 	db	esc,esc,esc
-	db	brown+70h		; set border color
+	db	black+70h               ; set border color
 	db	'Z'-'@'			; home and clear screen (to BG color)
 
-	db	lf,lf,lf
+;	db	lf,lf,lf
     if	use$fast
 	db	'Fast '
     endif
@@ -247,31 +256,31 @@ init$mmu$loop:
 	db	'/w 6551 '
     endif
 
-	db	'CP/M 3.0'
+	db	esc,'=',2+20h,8+20h,'CP/M 3       Version 3.0'
     if	not banked
 	db	' Non-Banked'
     endif
-	db	' On the Commodore 128 '
-	date
+;	db	' on the Commodore 128  '
+;	date
 	warning
-	db	cr,lf
-	db	'          ',0
+	db	cr,lf,lf,lf,0
+;	db	'          ',0
 
 ;
 ;	set CONOUT driver to correct screen
 ;
-	lxi	h,4000h			; 80 column screen vector	
+	lxi	h,2000h			; 40 column screen vector
 	call	read$d505
 	ral
-	jrnc	set$screen
-	mvi	a,'4'
-	sta	screen$num
-	mvi	h,20h			; 40 column screen vector
+	jrc	set$screen
+;	mvi	a,'8'
+;	sta	screen$num
+	mvi     h,40h			; 80 column screen vector
 
 set$screen:
-	call	prt$msg			; HL saved
+;	call	prt$msg			; HL saved
 screen$num:
-	db	'80 column display',cr,lf,lf,lf,lf,0
+;	db	'40 column display',cr,lf,lf,lf,lf,0
 	shld	@covec			; assign console output to CRT: (40/80)
 
 	page
@@ -336,21 +345,17 @@ screen$num:
 	inx	h
 	mov	d,m
 	inx	h
-	xchg
-	shld	sound1			; H=SID reg 24, L=SID reg 5
-	xchg
+	sded	sound1			; H=SID reg 24, L=SID reg 5
 	mov	e,m
 	inx	h
 	mov	d,m
-	xchg
-	shld	sound2			; H=SID reg 6, L=SID reg 1
-	lxi	h,9
+	sded	sound2			; H=SID reg 6, L=SID reg 1
+	lxi	d,9
 	dad	d
 	mov	e,m
 	inx	h
 	mov	d,m
-	xchg
-	shld	sound3			; H=SID reg 4 then L=SID reg 4 
+	sded	sound3			; H=SID reg 4 then L=SID reg 4 
 ;
 ;	set-up key click sound registers
 ;
@@ -411,6 +416,18 @@ read$d505:
 	sta	io$0			; enable MMU (not RAM)
 	lxi	b,0d505h
 	inp	a			; read 40/80 column screen
+	ral
+	jrc	end$d505
+	push	psw
+	push	b
+	lxi	b,0d011h		; blank 40 col screen if 80 col
+	inp	a
+	ani	0efh
+	outp	a
+	pop	b
+	pop	psw
+end$d505:
+	rar
 	sta	bank$0			; re-enable RAM
 	ret
 
@@ -420,7 +437,7 @@ read$d505:
 ;
 	DSEG
    if	not use$6551
-init$RS232:
+?init$RS232:
 	di
 
 	xra	a
@@ -488,7 +505,7 @@ NTSC$baud$table:
 	dw	2544			; 134	2487.6us (2487.46)
 	db	1
 	dw	2273			; 150	2222.2us (2222.48)
-	db	2
+	db	1
 	dw	1136			; 300	1111.1us (1110.75)
 	db	3
 	dw	568			; 600	 555.6us ( 555.38)
@@ -511,7 +528,7 @@ PAL$baud$table:
 	dw	2451			; 134	 2487.6us (2487.69)
 	db	1
 	dw	2189			; 150	 2222.2us (2221.77)
-	db	2
+	db	1
 	dw	1095			; 300	 1111.1us (1111.39)  300*3
 	db	3
 	dw	547			; 600	  555.6us ( 555.19)  600*3
@@ -523,9 +540,9 @@ PAL$baud$table:
 ;
 ;
 ;
-out$RS232:
-	call	out$st$RS232
-	jrz	out$RS232
+?out$RS232:
+	call	?out$st$RS232
+	jrz	?out$RS232
 	mov	a,c
 	sta	xmit$data		; get character to send in A
 	lxi	h,RS232$status
@@ -535,7 +552,7 @@ out$RS232:
 ;
 ;
 ;
-out$st$RS232:
+?out$st$RS232:
 	lda	RS232$status
 	ani	80h			; bit 8 set if busy
 	xri	80h			; A cleared if busy (=80h if not)
@@ -546,9 +563,9 @@ out$st$RS232:
 ;
 ;
 ;
-in$RS232:
-	call	in$st$RS232
-	jrz	in$RS232
+?in$RS232:
+	call	?in$st$RS232
+	jrz	?in$RS232
 	lda	recv$data
 	lxi	h,RS232$status
 	res	0,m
@@ -557,7 +574,7 @@ in$RS232:
 ;
 ;
 ;
-in$st$RS232:
+?in$st$RS232:
 	lda	RS232$status
 	ani	1
 	rz
@@ -579,8 +596,7 @@ in$st$RS232:
 ;
 ?user:
 	shld	user$hl$temp
-	xchg
-	shld	de$temp			; save DE for called function
+	sded	de$temp			; save DE for called function
 
 	mov	e,a			; place function number in E
 	mvi	a,num$user$fun-1	; last legal function number
@@ -645,7 +661,7 @@ do$rom$fun:
 	push	h			; ..the user
 no$hl$req:
 	mov	l,a
-	rst	5			; call rom functon (RCALL) L=fun #	
+	rst	5			; call rom function (RCALL) L=fun #
 	ret
 
 ;	mvi	a,7eh			; only allow even functions
@@ -681,23 +697,39 @@ code$error:
 ;
 	CSEG
 ?rlccp:
-	lxi	h,ccp$buffer
-	lxi	b,0c80h
 
-load$ccp:
-	sta	bank$0
-	mov	a,m
+	lxi	d,0100h
+	lxi	h,ccp$buffer
+trans$ccp:
+	sta	io$1
+	lxi	b,ram$reg
+	mvi	a,common$4K
+	outp	a
+	lxi	b,0c80h
+	ldir
+	lxi	b,ram$reg
+	mvi	a,common$8K
+	outp	a
 	sta	bank$1
-	lxi	d,-ccp$buffer+100h
-	dad	d
-	mov	m,a
-	lxi	d,ccp$buffer-100h+1
-	dad	d
-	dcx	b
-	mov	a,b
-	ora	c
-	jrnz	load$ccp
 	ret
+
+;	lxi	h,ccp$buffer
+;	lxi	b,0c80h
+
+;load$ccp:
+;	sta	bank$0
+;	mov	a,m
+;	sta	bank$1
+;	lxi	d,-ccp$buffer+100h
+;	dad	d
+;	mov	m,a
+;	lxi	d,ccp$buffer-100h+1
+;	dad	d
+;	dcx	b
+;	mov	a,b
+;	ora	c
+;	jrnz	load$ccp
+;	ret
 
 	page
 ;
@@ -714,36 +746,35 @@ load$ccp:
 	inr	a
 	jrz	no$CCP		; error if no file...
 	lxi	d,0100h
-	call	setdma		; start of TPA
+	call	setdma          ; start of TPA
 	lxi	d,128
-	call	setmulti	; allow up to 16K bytes
+	call	setmulti        ; allow up to 16K bytes
 	lxi	d,ccp$fcb
 	call	read
 
 	lxi	h,0100h
-	lxi	b,0c80h
-	lda	force$map
-	push	psw
+	lxi	d,ccp$buffer
+	jr	trans$ccp
 
 ;
 ;
 save$ccp:
-	sta	bank$1
-	mov	a,m
-	sta	bank$0
-	lxi	d,ccp$buffer-100h
-	dad	d
-	mov	m,a
-	lxi	d,-ccp$buffer+100h+1
-	dad	d
-	dcx	b
-	mov	a,b
-	ora	c
-	jrnz	save$ccp
+;	sta	bank$1
+;	mov	a,m
+;	sta	bank$0
+;	lxi	d,ccp$buffer-100h
+;	dad	d
+;	mov	m,a
+;	lxi	d,-ccp$buffer+100h+1
+;	dad	d
+;	dcx	b
+;	mov	a,b
+;	ora	c
+;	jrnz	save$ccp
 
-	pop	psw
-	sta	force$map
-	ret
+;	pop	psw
+;	sta	force$map
+;	ret
 
 	page 
 ;
@@ -910,7 +941,7 @@ number$drivers:
 	dw	?pt$i$1101	; prt2
 	dw	?int65		; 6551
    if	not use$6551
-	dw	init$RS232	; software RS232
+	dw	?init$RS232	; software RS232
    endif
 	dw	rret		;
 max$devices	equ	(($-number$drivers)/2)-1
@@ -918,16 +949,16 @@ max$devices	equ	(($-number$drivers)/2)-1
 ;
 ;
 ;
-?ci:				; character input
+?ci				; character input
 	call	vector$io	; jump with table adr on stack
-	dw	key$board$in	; keys
+	dw	?kbin		; keys
 	dw	rret		; 80col
 	dw	rret		; 40col
 	dw	rret		; ptr1
 	dw	rret		; prt2
 	dw	?in65		; 6551
    if	not use$6551
-	dw	in$RS232	; software RS232
+	dw	?in$RS232	; software RS232
    endif
 	dw	null$input
 
@@ -936,14 +967,14 @@ max$devices	equ	(($-number$drivers)/2)-1
 ;
 ?cist:				; character input status
 	call	vector$io	; jump with table adr on stack
-	dw	key$board$stat	; keys
+	dw	?kbstat		; keys
 	dw	rret		; 80col
 	dw	rret		; 40col
 	dw	rret		; prt1
 	dw	rret		; prt2
 	dw	?ins65		; 6551
    if	not use$6551
-	dw	in$st$RS232	; software RS232
+	dw	?in$st$RS232	; software RS232
    endif
 	dw	rret
 
@@ -959,7 +990,7 @@ max$devices	equ	(($-number$drivers)/2)-1
 	dw	?pt$o$2		; prt2
 	dw	?out65		; 6551
    if	not use$6551
-	dw	out$RS232	; software RS232
+	dw	?out$RS232	; software RS232
    endif
 	dw	rret
 
@@ -968,14 +999,14 @@ max$devices	equ	(($-number$drivers)/2)-1
 ;
 ?cost:				; character output status
 	call	vector$io	; jump with table adr on stack
-	dw	ret$true	; keys
+	dw	rret		; keys
 	dw	ret$true	; 80col
 	dw	ret$true	; 40col
-	dw	ret$true	; prt1	?pt$s$1101
-	dw	ret$true	; prt2
+	dw	?pt$s$1		; prt1
+	dw	?pt$s$2		; prt2
 	dw	?outs65		; 6551
    if	not use$6551
-	dw	out$st$RS232	; software RS232
+	dw	?out$st$RS232	; software RS232
    endif
 	dw	ret$true
 
@@ -1019,8 +1050,7 @@ exist:
 	lxi	sp,bios$stack
 	push	h		; save old stack
 
-	lhld	de$temp
-	xchg
+	lded	de$temp
 	lhld	hl$temp		; recover exec adr
 
 	lda	force$map	; get current bank
@@ -1043,14 +1073,12 @@ exist:
 ipchl:
 	pchl			; jmp to handler
 
-	ds	30h
-bios$stack:
+;	ds	30h		; our own stack
+;bios$stack:
 
     else
 	lda	a$temp
-	xchg
-	lhld	de$temp
-	xchg
+	lded	de$temp
 	pchl
     endif
 
@@ -1063,34 +1091,36 @@ bios$stack:
 ;
 ;
 ;
-key$board$in:
-	call	key$board$stat	; test if key is available
-	jrz	key$board$in	
-
+?kbin
 	lda	key$buf
-	push	psw		; save on stack
+	ora	a
+	jnz	kbin$cont
+kbin$again:
+	call	?get$key
+	jrz	kbin$again   
+kbin$cont:
+	mov	c,a		; save
 	xra	a		; clear key 
 	sta	key$buf
 ;
 ;**	the tracking of the display should be able to be turned off
 ;**	this could be done with one of the keyboard's Fx codes
-;
-	lda	stat$enable
-	bit	6,a
-	jrnz	no$update
-	lda	char$col$40
-	mov	b,a
-	lda	@off40
-	cmp	b
-	jrnc	do$update
-	adi	39-1
-	cmp	b
-	jrnc	no$update
+;	lda	stat$enable
+;	bit	6,a
+;	jrnz	no$update
+;	lda	char$col$40
+;	mov	b,a
+;	lda	@off40
+;	cmp	b
+;	jrnc	do$update
+;	adi	39-1
+;	cmp	b
+;	jrnc	no$update
 do$update:
-	mvi	a,80h	
-	sta	old$offset	; store 80h to demand update
+;	mvi	a,80h 
+;	sta	old$offset	; store 80h to demand update
 no$update:
-	pop	psw		; recover current key
+	mov	a,c		; recover current key
 rret:
 	ret
 
@@ -1112,7 +1142,7 @@ null$input:		; return a ctl-Z for no device
 ;
 ;
 ;
-key$board$stat:
+?kbstat:
 	lda	key$buf
 	ora	a
 	jrnz	ret$true
@@ -1159,7 +1189,7 @@ ret$true:
 	db	'RS232 '	; device 6, software RS232 device
 	db	mb$in$out+mb$serial+mb$xonxoff+mb$softbaud
 RS232$baud:
-	db	baud$300
+	db	baud$110
    endif
 	db	0		; mark end of table
 
@@ -1199,7 +1229,7 @@ set$hr:
 	mov	c,a
 	mov	a,b
 	sta	old$hr
-        cmp     c                       ; if @hour<old$hr
+	cmp	c			; if @hour<old$hr
 	jrnc	same$day
  
 	push	h
@@ -1392,4 +1422,3 @@ not$bank$0:
 	ret
 
 	end
-

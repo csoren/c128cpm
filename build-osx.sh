@@ -38,15 +38,17 @@ $runcpm <<EOF
 submit cz
 exit
 EOF
+cd A/0
+#dd bs=1 if=KEYCODE.BIN of=CPM+.SYS iseek=0 oseek=256 count=1024 conv=notrunc
 
-cd ..
+cd ../../..
 
 # Build disk image
-DISTRIBUTION=releases/system_1987.622-3297432
-FILES="CCP.COM HELP.COM HELP.HLP CONF.COM CONF.HLP KEYFIG.COM KEYFIG.HLP C1571.COM COPYSYS.COM FORMAT.COM SCREEN40.COM PIP.COM READ.ME"  
+DISTRIBUTION=releases/cpmfast
 
-rm cpm+128.d64
-ctools/bin/cformat -1 cpm+128.d64
-ctools/bin/ctools cpm+128.d64 p buildenv/A/0/CPM+.SYS
-for i in $FILES; do ctools/bin/ctools cpm+128.d64 p $DISTRIBUTION/$i; done
-ctools/bin/ctools cpm+128.d64 d
+rm cpm+128.d71
+ctools/bin/cformat -2 cpm+128.d71
+ctools/bin/ctools cpm+128.d71 p buildenv/A/0/CPM+.SYS
+shopt -s extglob
+for i in $DISTRIBUTION/!(CPM+.SYS); do ctools/bin/ctools cpm+128.d71 p $i; done
+ctools/bin/ctools cpm+128.d71 d

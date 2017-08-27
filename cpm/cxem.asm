@@ -9,7 +9,7 @@
 
 lines	equ	24
 
-	public	?out40,?out80,ADM31
+	public	?out40,?out80,ADM31,start$checking
 
 ;
 ;	ADM3A
@@ -90,23 +90,23 @@ lines	equ	24
 ;
 ; KAYPRO 84 (???) screen commands
 ;
-;       ESC B <num>     turn attrubute on
-;       ESC C <num>     turn attrubute off
+;	ESC B <num>	turn attribute on
+;	ESC C <num>	turn attribute off
 ;
-;       where <num> is defined as:
+;	where <num> is defined as:
 ;		0=reverse video
-;               1=      <half intensity>
-;               2=      <blink>
-;               3=      <underline>
+;		1=	<half intensity>
+;		2=	<blink>
+;		3=	<underline>
 ;
-;                       <best guess>
+;			<best guess>
 ;
 ;		The following two sequences are
 ;		 use but I do not know what function
 ;		 they perform.  (added 21 May 86)
 ;
-;       ESC D <num1><num2><num3><num4>
-;       ESC L <num1><num2><num3><num4>
+;	ESC D <num1><num2><num3><num4>
+;	ESC L <num1><num2><num3><num4>
 ;
 	page
 
@@ -116,56 +116,51 @@ lines	equ	24
 ;
 ?out40:
 	mvi	a,FR$40
+	sta	fun$offset
 	lxi	h,parm$area$40
-	jr	out$cont
+	shld	parm$base
+	call	?out$80
+	xra	a
+	sta	fun$offset
+	lxi	h,parm$area$80
+	shld	parm$base
+	ret
 
-;
-;
 ;
 ?out$80:
-	xra	a			; 80 column offset is 0
-	lxi	h,parm$area$80
-out$cont:
-	sta	fun$offset
 	mvi	a,7fh
 	ana	c
-	mov	c,a
-	shld	parm$base
-	lhld	emulation$adr
-	pchl
 
-	page
-;
-;	ADM-31 terminal emulation
-;
 ADM31:
-	lhld	parm$base		; 1st parm is exec adr (2 bytes)
-	mov	a,m
-	inx	h
+	lhld	parm$base               ; 1st parm is exec adr (2 bytes)
+	mov	c,m
+	inr	l
 	mov	h,m
-	mov	l,a
-
-	ora	h			; L is in A already, test HL=0
-	mov	a,c			; C is char to output
-	jrz	start$checking 
+	mov	l,c
 	pchl
 
-;
-;
-;
 start$checking:
+	cpi	20h
+	jrc	contrl$char
+	mov	d,a
+
+	TJMP	FR$wr$char
+
+
+
+
+;
+;
+;
+
+contrl$char
 	lxi	h,control$table
 	lxi	b,cnt$tbl$lng
 	ccir
 	lxi	h,control$exec$adr
 	jrz	find$exec$adr
 
-	cpi	20h
-	rc
-
-do$direct:
-	mov	d,a
-	TJMP	FR$wr$char
+	ret
 
 	page
 ;
@@ -200,12 +195,9 @@ find$exec$adr:
 ;
 cont$later:
 	pop	h		; get address to cont at in H
-	jr	save$exec$adr	; save it
 ;
 ;
 ;
-remove$exec$adr:
-	lxi	h,0
 save$exec$adr:
 	xchg
 	lhld	parm$base
@@ -214,6 +206,9 @@ save$exec$adr:
 	mov	m,d
 	ret
 
+remove$exec$adr:
+	lxi	h,start$checking
+	jr	save$exec$adr
 
 ;
 ;
@@ -248,7 +243,7 @@ esc$equ:
 	sui	' '			; remove ascii bias
 	mov	m,a
 	cpi	'8'-' '			; test for line 25 (A=24?)
-	jrnz	not$status$line		; no, jmp
+	jrnz	not$status$line         ; no, jmp
 	inr	a			; yes, A=25
 	sta	paint$size		; set 40 column repaint to 25 lines
 not$status$line:
@@ -267,9 +262,11 @@ not$status$line:
 	jr	remove$exec$adr
 
 	page
+
 ;
 ;
 ;
+	nop
 char$cnt$z:				; ^Z	home and clear screen
 	lxi	d,lines*256+0		; B=24(row) C=0(col)
 	TCALL	FR$cursor$pos
@@ -322,6 +319,7 @@ cursor$left:
 ;	placed in common so that link and gencpm will not
 ;	cause this code to show up at address 0D000h to 0DFFFh
 ;
+
 char$cnt$g:				; ^G	bell
 	RJMP	FR$bell
 
@@ -350,8 +348,10 @@ esc$E:
 	TJMP	FR$line$ins
 
 	page
+
+	dseg
 ;
-;       ESC C <num> atribute off
+;	ESC C <num> atribute off
 ;
 esc$C:
 	call	cont$later
@@ -359,7 +359,7 @@ esc$C:
 	jr	esc$num$cont
 
 ;
-;       ESC B <num> atribute on
+;	ESC B <num> atribute on
 ;
 esc$B:
 	call	cont$later
@@ -458,9 +458,11 @@ esc$G$4:
 
 set$atr$on:
 	mov	c,b			; reverse attr
+	jr	set$FR$attr
+
 set$FR$attr:
 	TJMP	FR$attr
-
+	dseg
 ;
 ;
 ;
@@ -485,21 +487,24 @@ set$atr$off:
 	cma
 	ana	b
 	mov	c,a
-	TJMP	FR$attr
+	jr	set$FR$attr
 
 	page
 ;
 ;	table scanned top to bottom
 ;
 control$table:
-	db	07h	; ^G		bell
-	db	bs	; ^H		cursor left
+	db	esc	; ESC
+	db	cr	; ^M		carrage return
 	db	lf	; ^J		cursor down
+
+
+	db	bs	; ^H		cursor left
+
 	db	0Bh	; ^K		cursor up
 	db	0Ch	; ^L		cursor right
-	db	cr	; ^M		carrage return
+	db	07h	; ^G		bell
 	db	1Ah	; ^Z		home and clear screen
-	db	esc	; ESC
 	db	18h	; ^X		Clear to End of Line (K-Pro)
 	db	17h	; ^W		Clear to End of Screen (K-Pro)
 	db	1Eh	; ^^		home cursor (K-Pro)
@@ -513,15 +518,14 @@ control$exec$adr:
 	dw	home$cursor	; ^^	home cursor	(K-Pro)
 	dw	esc$y		; ^W	CES		(K-Pro)
 	dw	esc$t		; ^X	CEL		(K-Pro)
-	dw	char$esc	; ESC
 	dw	char$cnt$z	; ^Z	home and clear screen
-	dw	do$cr		; ^M	carriage return
+	dw	char$cnt$g	; ^G	bell
 	dw	cursor$rt	; ^L	cursor right
 	dw	cursor$up	; ^K	cursor up
-	dw	cursor$down	; ^J	cursor down
 	dw	cursor$left	; ^H	cursor left
-	dw	char$cnt$g	; ^G	bell
-
+	dw	cursor$down	; ^J	cursor down
+	dw	do$cr		; ^M	carriage return
+	dw	char$esc	; ESC
 
 	page
 ;
@@ -532,23 +536,25 @@ esc$table:
 
 	db	'T'		; ESC T	  clear to end of line
 	db	't'		; ESC t   clear to end of line
-	db	'Y'		; ESC Y   clear to end of screen
-	db	'y'		; ESC y   clear to end of screen
-	db	':'		; ESC :   home & clear screen
-	db	'*'		; ESC *   home & clear screen
 
 	db	'E'		; ESC E   Insert line
 	db	'Q'		; ESC Q   Insert Character
 	db	'R'		; ESC R   Delete Line
 	db	'W'		; ESC W   Delete Character
 
+	db	'Y'		; ESC Y   clear to end of screen
+	db	'y'		; ESC y   clear to end of screen
+	db	':'		; ESC :   home & clear screen
+	db	'*'		; ESC *   home & clear screen
+
+
 	db	')'		; ESC )   Half intensity on
 	db	'('		; ESC (   Half intensity off
 	db	'G'		; ESC G 4 Reverse video on
 				; ESC G 2 Blinking on
 				; ESC G 0 Rev. video and blinking off
-        db      'B'             ; ESC B <num> atribute on
-        db      'C'             ; ESC C <num> atribute off
+	db	'B'		; ESC B <num> atribute on
+	db	'C'		; ESC C <num> atribute off
 	db	esc		; ESC ESC
 	db	'D'		; ESC D   ???
 	db	'L'		; ESC L   ???
@@ -563,23 +569,25 @@ esc$exec$adr:
 	dw	esc$L		; ESC L   A kaypro function ???
 	dw	esc$D		; ESC D   A kaypro function ???
 	dw	esc$esc		; ESC ESC ESC color
-        dw      esc$C           ; ESC C <num> atribute off
-        dw      esc$B           ; ESC B <num> atribute on
+	dw	esc$C		; ESC C <num> atribute off
+	dw	esc$B		; ESC B <num> atribute on
 	dw	esc$G		; ESC G 4 Reverse video on
 				; ESC G 2 Blinking on
 				; ESC G 0 Rev. video and blinking off
 	dw	esc$lfp		; ESC (   Half intensity off
 	dw	esc$rtp		; ESC )   Half intensity on
 
-	dw	esc$W		; ESC W   Delete Character
-	dw	esc$R		; ESC R   Delete Line
-	dw	esc$Q		; ESC Q   Insert Character
-	dw	esc$E		; ESC E   Insert line
 
 	dw	char$cnt$z	; ESC *   home & clear screen
 	dw	char$cnt$z	; ESC :   home & clear screen
 	dw	esc$y		; ESC y   clear to end of screen
 	dw	esc$y		; ESC Y   clear to end of screen
+
+	dw	esc$W		; ESC W   Delete Character
+	dw	esc$R		; ESC R   Delete Line
+	dw	esc$Q		; ESC Q   Insert Character
+	dw	esc$E		; ESC E   Insert line
+
 	dw	esc$t		; ESC t   clear to end of line
 	dw	esc$t		; ESC T	  clear to end of line
 

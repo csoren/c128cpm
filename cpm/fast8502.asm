@@ -21,7 +21,7 @@ CMDCHN		equ	datchn+1	; 0Dh
 DEVNO		equ	cmdchn+1	; 0Eh
 adr$1		equ	devno+1		; 0Fh
 temp$byte	equ	adr$1+2		; 11h
-;		equ	temp$byte+1	; 12h
+prt$flag	equ	temp$byte+1	; 12h
 
 pal$nts		equ	00a03h		; FF=PAL=50Hz 0=NTSC=60Hz
 serial		equ	00a1ch
@@ -30,9 +30,15 @@ d1sdr		equ	0dc0ch		; Fast serial data reg.
 d1icr		equ	0dc0dh		; serial channel interrupt control reg
 
 clkbit		equ	10h		; d2pra clock bit mask
+
+ddr8502		equ	0000h		; 8502 data direction register
+port8502	equ	0001h		; 8502 internal I/O port.
+
 ;
 ;	KERNAL EQUATES
 ;
+K$80col$init	equ	0C027h		; copy ROM chars to VDC ram
+
 K$spin$spout	equ	0FF64h		; C=0 spin  C=1 spout
 
 K$setbnk	equ	0FF68h		; set the logical bank # for open
@@ -127,7 +133,10 @@ iotbl:
 	dw	user$fun	;9 vector to user code (L=viccount,H=vicdata) 
 	dw	ram$dsk$rd	;10 RAM disk read
 	dw	ram$dsk$wr	;11 RAM disk write
-
+	dw	PRTST		;12 printer status
+	dw	port$rd		;13 processor port read (00=count, 01=data)
+	dw	port$wr		;14 processor port write   "         "
+	dw	init$80col	;15 copy ROM chars to VDC RAM
 
 NUMCMD		equ	($-IOTBL)/2	; NUMBER OF COMMANDS
 iotbl$low	equ	low(iotbl)
@@ -156,7 +165,7 @@ VICIO:
 				;-K  yes, get vector to it
 	@cld			;-K  clear to binary mode
 	@asl	a		;-K  A=2*CMD (carry cleared)
-	@clc			;-K
+;	@clc			;-K
 	@adc	iotbl$low+2,#	;-K  add to vector table start address
 	@sta	VICIO2+1	;-K  modify the JMP instructions ind adr
 VICIO2:
@@ -261,7 +270,7 @@ WRITE0:
 	@LDX	0,#		;+K
 ;
 WRITE1:
-        @sei 			;+K  disable interrupts
+	@sei 			;+K  disable interrupts
 	@ldy	3fh,#		;+K  enable all RAM in bank 0
 	@sty	force$map	;+K
 	@LDA	@BUFFER,X	;-K
@@ -375,9 +384,13 @@ clk$hi:
 ;	secondary address in vic$trk
 ;	the logical file number is equal to the device #
 ;	if VIC$count=0 then output character in VIC$data
-;       if VIC$count<>0 then output characters pointered to by @buffer
+;	if VIC$count<>0 then output characters pointered to by @buffer
 ;
+PRTST:	@lda	255,#		;-K  flag status call
+	@skip2			;-K
 PRINT:				;**CMD ENTRY**
+	@lda	0,#		;-K  flag print call
+	@sta	prt$flag	;-K
 	@lda	vic$drv		;-K
 	@sta	prtno		;-K
 	@lda	vic$trk		;-K
@@ -390,6 +403,8 @@ PRINT:				;**CMD ENTRY**
 print$cont:
 	@ldx	prtno		;+K
 	@JSR	K$chkout	;+K
+	@bit	prt$flag	;+K  recover flag: "print" or "status"
+	@bmi	stat$cont	;+K
 	@BCS	PERR0		;+K  PRINT ERROR IF CARRY SET
 
 	@sty	io$0		;+K  2/24
@@ -426,12 +441,32 @@ PERR0:
 	@BNE	PERR1		;+K  BRANCH IF NO
 reopen$prt:
 	@JSR	OPNPRT		;?K  OPEN PRINTER CHANNEL
-	@BCC	print$cont	;+K  IF CARRY CLEAR, OK TO PRINT
+	@JMP	print$cont	;+K  if it didn't work we'll see soon.
+
 PERR1:	@LDA	255,#		;+K  NO DEVICE PRESENT
 	@STA	vic$data	;+K  FLAG BAD ATTEMPT writes to ram under ROM
-PRTST:	@RTS			;+K
+	@RTS
+
+stat$cont:
+
+	@php
+	@jsr	K$clrchn	;+K
+	@plp
+
+	@bcc	prt$ready	;+K
+
+	@cmp	3,#
+	@beq	reopen$prt
+
+	@lda	0,#		;+K
+	@skip2			;+K
+prt$ready:
+	@lda	255,#		;+K
+	@sta	vic$data	;+K
+	@rts			;+K
 
 	PAGE
+
 ;
 ; **** FORMAT DISK ROUTINE ****
 ;
@@ -477,7 +512,7 @@ ram$dsk$rd:			; RAM disk read
 ;
 ;
 ;
-ram$dsk$wr:			; RAM disk write
+ram$dsk$wr:				; RAM disk write
 	@ldx	80h,#			;-K
   if	use$fast
 	@lda	0,#			;-K  0=slow (1 MHz)
@@ -488,6 +523,24 @@ ram$dsk$wr:			; RAM disk write
  	@sta	force$map		;    remove I/O area
 	@rts				;-K
 
+port$rd:
+	@lda	ddr8502
+	@sta	vic$count
+	@lda	port8502
+	@sta	vic$data
+	@jmp	bios$exit
+
+port$wr:
+	@lda    vic$count
+	@sta    ddr8502
+	@lda    vic$data
+	@sta    port8502
+	@jmp    bios$exit
+
+init$80col:
+	@jsr	en$kernal
+	@jsr	K$80col$init
+	@jmp	bios$exit
 
 	PAGE
 ;
@@ -836,13 +889,14 @@ CKOTCM:
 ;
 opnprt:
 	@jsr	en$kernal	;-K
+	@jsr	K$clrchn	;+K
 	@lda	prtno		;+K
 	@clc			;+K
 	@JSR	K$close		;+K
 
 	@lda	prtno		;+K
 	@TAX			;+K  LDX #4 (or #5)
-	@ldy	second$adr	;+K secondary adr passed in vic$trk (normaly=7)
+	@ldy	second$adr	;+K secondary adr passed in vic$trk (normally=7)
 	@JSR	K$setlfs	;+K
 	@LDA	0,#		;+K
 	@JSR	K$setnam	;+K
@@ -917,5 +971,4 @@ inq$cmd$lng	equ	3		; U0+cmd
 
 query$cmd:	equ	10001010b
 query$cmd$lng	equ	4		; U0+cmd+(track offset)
-
 
