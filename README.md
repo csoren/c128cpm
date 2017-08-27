@@ -10,4 +10,15 @@ Currently only CPM+.SYS is built from source, while the rest of the binaries are
 
     $ ./build-osx.sh
 
-If everything goes well, a new image cpm+128.d64 is created.
+If everything goes well, a new image cpm+128.d71 is created.
+
+### Unix, Linux, WSL
+
+It's possible to use the Windows Subsystem for Linux to build. Tested with Ubuntu on Windows 10, you'll need the following packages
+
+    $ apt-get install build-essential libreadline-dev libncurses-dev unzip
+
+Then just run
+
+    $ ./build-unix-sh
+    
