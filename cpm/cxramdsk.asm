@@ -23,7 +23,7 @@
 	public	RMdsk
 
 	extrn	?fun65
-	extrn	?dkmov
+	extrn	?dkmov$hl
 
 	page
 ;
@@ -89,7 +89,7 @@ RM$write:
 	ana	a
 	lhld	@dma
 	jrz	RM$do$rd$wr
-        call    ?dkmov+3        ; A<>0 transfers data from local$DMA to buffer
+	call	?dkmov$hl	; A<>0 transfers data from local$DMA to buffer
 	mvi	d,VIC$RM$wr
 	jr	RM$do$rd$wr$buf
 ;
@@ -104,7 +104,7 @@ RM$read:
 
 	call	RM$do$rd$wr$buf	; no,  transfer through buffer
 	lhld	@dma
-	call	?dkmov+3	; A=0 transfers data from buffer to local$DMA
+	call	?dkmov$hl	; A=0 transfers data from buffer to local$DMA
 	xra	a
 	ret
 ;
@@ -184,32 +184,17 @@ test$for$ram$dsk:
 	inr	l			; no, buffer end?
 	jrnz	test$for$ram$dsk	; no, test rest of buffer
 					; yes, L=0
+
 ;
-;	device is missing, remove vector
+;	No REU, try Kerberos
 ;
-	mov	h,l			; remove vector to RAM disk
-	shld	@dtbl+('M'-'A')*2	; .. (drive M:)
-	ret
+	jr	kerberos$init
+
 ;
 ;	initialize directory buffer
 ;
 device$is$present:
-	call	init$buffer		; fill buffer with E5`s
-	lxi	h,dir$label
-	lxi	d,@buffer
-	lxi	b,32
-	ldir				; install directory label in 1st record
-	lxi	h,0
-	shld	@trk			; set track=0
-
-clear$dir:
-	call	RM$write		; erase director sectors
-	call	init$buffer		; fill buffer with E5`s
-	lda	@trk
-	inr	a
-	sta	@trk
-	cpi	16			; 16 for 512K Ram disk
-	jrnz	clear$dir
+	call	initialize$directory
 
 set$size:
 	lxi	h,dpb$RM$128
@@ -222,6 +207,166 @@ set$128K:
 	shld	dpb$ptr	
 RM$login:
 	ret
+
+initialize$directory:
+	call	init$buffer		; fill buffer with E5`s
+	lxi	h,dir$label
+	lxi	d,@buffer
+	lxi	b,32
+	ldir				; install directory label in 1st record
+	lxi	h,0
+	shld	@trk			; set track=0
+
+clear$dir:
+	call	vectored$write		; erase director sectors
+	call	init$buffer		; fill buffer with E5`s
+	lda	@trk
+	inr	a
+	sta	@trk
+	cpi	16			; 16 for 512K Ram disk
+	jrnz	clear$dir
+	ret
+
+vectored$write:
+	lhld	RMdsk-10
+	pchl
+
+
+	page
+
+;
+;	Kerberos SRAM support
+;
+
+kerberos$init:
+	lxi	h,kerberos$vectors
+	lxi	d,RMdsk-10
+	lxi	bc,4*2
+	ldir
+
+	lxi	h,dpb$RM$128
+	shld	dpb$ptr	
+
+;	Detect kerberos SRAM
+
+	call	kerberos$set$bank$0
+
+	lxi	b,kerb$sram
+	xra	a
+	outp	a
+
+	lxi	hl,1FFh			; select bank 1FFh
+	call	kerberos$set$bank
+
+	lxi	b,kerb$sram
+	dcr	a
+	outp	a
+	inp	e
+	cmp	e
+	jnz	kerberos$missing
+
+	call	kerberos$set$bank$0
+
+	lxi	b,kerb$sram
+	inp	e
+	jz	initialize$directory	; found Kerberos
+	
+;
+;	device is missing, remove vector
+;
+kerberos$missing:
+	lxi	h,0			; remove vector to RAM disk
+	shld	@dtbl+('M'-'A')*2	; .. (drive M:)
+kerberos$login:
+	ret
+
+kerberos$vectors:
+	dw	kerberos$write
+	dw	kerberos$read
+	dw	kerberos$login
+	dw	kerberos$init
+
+;
+; disk READ and WRITE entry points.
+; These entries are called with the following arguments:
+;	relative drive number in @rdrv (8 bits)
+;	absolute drive number in @adrv (8 bits)
+;	disk transfer address in @dma (16 bits)
+;	disk transfer bank	in @dbnk (8 bits)
+;	disk track address	in @trk (16 bits)
+;	disk sector address	in @sect (16 bits)
+;	pointer to XDPH in <DE>
+;
+;   return with an error code in <A>
+;	A=0	no errors
+;	A=1	non-recoverable error
+;	A=2	disk write protected
+;	A=FF	media change detected
+;
+kerberos$write:
+	lhld	@trk
+	call	kerberos$setbank
+
+	lda	@dbnk		; get disk bank
+	ana	a
+	lhld	@dma
+	jrz	kerb$do$wr
+	call	?dkmov$hl	; A<>0 transfers data from local$DMA to buffer
+
+kerb$wr$buf:
+	lxi	h,@buffer
+kerb$do$wr:
+	lxi	b,kerb$sram
+kerb$do$wr$loop:
+	mov	d,m
+	outp	d
+	inx	h
+	inr	c
+	jnz	kerb$do$wr$loop
+
+	xra	a		; set no errors
+	ret
+
+kerberos$read:
+	lhld	@trk
+	call	kerberos$setbank
+
+	lda	@dbnk		; get disk bank
+	ana	a		; is it bank zero
+	lhld	@dma
+	jrz	kerb$do$rd	; yes, go read it
+
+	call	kerb$do$rd$buf	; no,  transfer through buffer
+	lhld	@dma
+	call	?dkmov$hl	; A=0 transfers data from buffer to local$DMA
+	xra	a
+	ret
+kerb$do$rd$buf:
+	lxi	h,@buffer
+kerb$do$rd:
+	lxi	b,kerb$sram
+kerb$do$rd$loop:
+	inp	d
+	mov	m,d
+	inx	h
+	inr	c
+	jnz	kerb$do$rd$loop
+
+	xra	a		; set no errors
+	ret
+
+
+kerberos$set$bank$0:
+	lxi	hl,0			; select bank 0
+
+;	hl - bank 0-1FF
+kerberos$set$bank:
+	lxi	b,kerb$bank$mid
+	outp	l
+	inr	c
+	outp	h
+	ret
+
 
 	page
 ;

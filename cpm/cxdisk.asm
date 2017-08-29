@@ -55,7 +55,7 @@
 	extrn	?di$int
 
 	public	?dskst
-	public	?dkmov
+	public	?dkmov$hl
 	extrn	?stat,@st40
 
 	page
@@ -559,8 +559,8 @@ dsk$B$out:
 ;	pointer to XDPH in <DE>
 ;
 ;   return with an error code in <A>
-; 	A=0	no errors
-; 	A=1	non-recoverable error
+;	A=0	no errors
+;	A=1	non-recoverable error
 ;	A=2	disk write protected
 ;	A=FF	media change detected
 ;
@@ -1255,6 +1255,7 @@ wait$status:
 	CSEG
 ?dkmov:
 	lhld	local$DMA	; current DMA adr
+?dkmov$hl:
 	lxi	d,@buffer	; location of disk read/write buffer
 	lxi	b,256		; sector size
 ;

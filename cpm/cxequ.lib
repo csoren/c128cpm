@@ -78,6 +78,10 @@ CIA2		equ	0DD00h		; 6526
 USART		equ	0DE00h		; 6551 (extrn card)
 RAM$dsk$base	equ	0DF00h		; 8726
 
+kerb$bank$mid	equ	0DE3Eh		; Address bits 15..8 for RAM.
+kerb$bank$hi	equ	0DE3Fh		; bit 0 - RAM address bit 16
+kerb$sram	equ	0DF00h
+
 ;
 ; Common memory allocation
 ;
