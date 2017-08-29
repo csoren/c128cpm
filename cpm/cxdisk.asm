@@ -560,11 +560,11 @@ dsk$B$out:
 ;	disk transfer bank	in @dbnk (8 bits)
 ;	disk track address	in @trk (16 bits)
 ;	disk sector address	in @sect (16 bits)
-;       pointer to XDPH in <DE>
+;	pointer to XDPH in <DE>
 ;
 ;   return with an error code in <A>
-; 	A=0	no errors
-; 	A=1	non-recoverable error
+;	A=0	no errors
+;	A=1	non-recoverable error
 ;	A=2	disk write protected
 ;	A=FF	media change detected
 ;

@@ -20,5 +20,5 @@ It's possible to use the Windows Subsystem for Linux to build. Tested with Ubunt
 
 Then just run
 
-    $ ./build-unix-sh
+    $ ./build-unix.sh
     
