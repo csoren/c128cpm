@@ -15,8 +15,7 @@ rmac cxext $$pz-s
 rmac cxscb $$pz-s
 mac  cxkycode $$pz-s
 mac  fast8502 $$pz-s
-link bnkbios3[b]=cxkrnl,cxio,cxintr,cxkey,cxem,cxvt,cx80,cxprinte,cxdisk,cxramdsk,cxext,cxscb
+link bnkbios3[b]=cxkrnl,cxem,cxintr,cxramdsk,cxkey,cxvt,cx80,cxprinte,cxdisk,cxio,cxext,cxscb
 gencpm auto
 addbios fast8502
 era *.sym
-

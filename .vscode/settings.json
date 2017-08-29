@@ -1,4 +1,6 @@
 {
   "editor.tabSize": 8,
-  "editor.insertSpaces": false
+  "editor.insertSpaces": false,
+  "files.encoding": "windows1252",
+  "files.eol": "\r\n"
 }

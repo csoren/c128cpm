@@ -6,8 +6,8 @@
 	maclib	cxequ
 
 	public	?PT$I$1101,?PT$O$1,?pt$o$2
-	public	?convt
-;	public	?PT$S$1101
+	public	?convt,?cnvt$none
+	public	?pt$s$1,?pt$s$2
 
 	extrn	?fun65
 
@@ -43,9 +43,12 @@ prt$cont:
 	dad	d		; index into buffer
 	mov	m,a
 	xchg
-;	ani	7Fh		; strip MSB
-	cpi	lf		; data a CR ?
-	jrz	print$it	; yes, go print this line
+	ani	7Fh		; strip MSB
+	cpi	lf		; data a Line Feed, Vert. Tab, Form Feed ?
+	jrc	maybe$not	; to small, print only if buffer full.
+	cpi	ff + 1		; upper limit ?
+	jrc	print$it	; one of the above - go print
+maybe$not:
 	mov	a,m		; no, get current line length
 	cpi	prt$buf$lng-1	; reach end yet ?
 	rnz			; no, exit
@@ -67,8 +70,8 @@ print$it:
 ;
 ;
 ;
-?convt$none:
-	mvi	c,0		; set secondary adr to 0
+?cnvt$none:
+	mvi	c,5		; set secondary adr to 5
 	ret
 ;
 ;
@@ -128,11 +131,33 @@ upper$symbols:
 ;	printer status code
 ;
 	dseg
-;?pt$s$1101:
-;	ret
+?pt$s$1:
+	lhld	prt$conv$1
+	lda	prt$buf$1
+	mvi	b,4
+	jr	prt$s$cont
+?pt$s$2:
+	lhld	prt$conv$2
+	lda	prt$buf$2
+	mvi	b,5
+prt$s$cont:
+	ora	a		; if there's anything in the buffer we assume
+	rnz			; the printer is ready.
+
+	mvi	c,0		; pseudo-cvt char 0 to get sec.adr. right
+	call	do$convt	; now c contains sec.adr.
+	mov	a,b
+	sta	vic$drv		; pass device # in Vic$drv
+	mov	a,c
+	sta	vic$trk		; pass secondary adr in Vic$trk
+
+	mvi	a,vic$prst
+	jmp	?fun65
+	
 
 
-prt$buf$lng	equ	81
+
+prt$buf$lng	equ	133
 
 prt$buf$1:	ds	prt$buf$lng
 prt$buf$2:	ds	prt$buf$lng
