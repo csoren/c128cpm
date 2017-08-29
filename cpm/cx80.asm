@@ -14,7 +14,7 @@ lines	equ	24
 	public	?int40,?int80
 	public	?stat,?save,?recov,@st40
 
-	extrn	ADM31,setadm
+;	extrn	ADM31,setadm
 ;	extrn	setvt
 
 	page
@@ -34,7 +34,7 @@ lines	equ	24
 ;
 	DSEG
 ?int80:
-	call	setadm
+;	call	setadm
 	lhld	key$tbl			; logical color assignments at end of
 	lxi	d,11*4*8		; ..key$table, (key$tbl size=11*4*8)
 	dad	d
@@ -48,11 +48,15 @@ lines	equ	24
 ;
 	mvi	a,10			; point to cursor start line#
 	call	R$wait			;  and mode register
-	mvi	a,40h			; start at line zero, cursor 1/16
+	mvi	a,67h			; start at line zero, cursor 1/16
 	outp	a
 	mvi	a,11			; point to cursor end line#
 	call	R$wait
 	mvi	a,7
+	outp	a
+	mvi	a,24h			; Set low VDC-ram refresh rate.
+	call	R$wait
+	mvi	a,0
 	outp	a
 	ret
 
@@ -345,3 +349,4 @@ status$color$tbl:
 	db	058h			; status color #14
 	db	06fh			; status color #15
 	db	0ceh			; status color #16
+

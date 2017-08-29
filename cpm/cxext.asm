@@ -39,9 +39,9 @@
 	extrn	?intbd
 
 ; Utility routines in standard BIOS
-        extrn   ?pmsg           ; print message @<HL> up to 00
-                                ; saves <BC> & <DE>
-        extrn   ?pdec           ; print binary number in <A> from 0 to 99.
+	extrn	?pmsg		; print message @<HL> up to 00
+				; saves <BC> & <DE>
+	extrn	?pdec		; print binary number in <A> from 0 to 99.
 	extrn	?pderr		; print BIOS disk error header
 	extrn	?conin,?cono	; con in and out
 	extrn	?const		; get console status
@@ -303,6 +303,7 @@ set$up$dsk:
 	ret
 
 	page
+
 ;==========================================================
 ;		CHARACTOR INITILIZATION ROUTINES
 ;==========================================================
@@ -344,7 +345,7 @@ init$ext:
 ;
 ;
 	dseg
-?in65:                  ; character input
+?in65:				; character input
 	call	?ins65		; check for character adv.
 	jrz	?in65		; loop if NOT
 	lda	key		; get the key code
@@ -364,7 +365,7 @@ init$ext:
 ;
 ;
 	dseg
-?ins65:			; character input status
+?ins65:				; character input status
 	lda	key		; is there already a key
 	ora	a
 	jrnz	ret$true	; yes, return true
@@ -505,7 +506,7 @@ init$ext:
 ;
 ;
 	dseg
-?in65:                  ; character input
+?in65:				; character input
 	call	?ins65
 	jrz	?in65
 	dcx	b		; point to data reg
@@ -544,8 +545,9 @@ init$ext:
 ?out65:				; character output
 	mov	a,c
 	push	psw
+again65:
 	call	?outs65
-	jrz	?out65
+	jrz	again65
 	pop	psw
 	dcx	b		; point to data register
 	outp	a

@@ -1,0 +1,17 @@
+DIM a AS STRING * 1024
+DIM b AS STRING * 256
+
+OPEN "cpmengl.sys" FOR BINARY AS 1
+GET 1, &H101, a
+CLOSE 1
+
+OPEN "cpmgerm.sys" FOR BINARY AS 1
+GET 1, &H391, b
+CLOSE 1
+
+OPEN "keycode.bin" FOR BINARY AS 2
+PUT 2, &H1, a
+PUT 2, &H191, b
+CLOSE 2
+
+

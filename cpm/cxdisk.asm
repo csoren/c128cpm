@@ -1,6 +1,4 @@
 
-
-
 ;
 ;	*****************************************
 ;	*					*
@@ -37,9 +35,9 @@
 
 ; Utility routines in standard BIOS
 	extrn	?wboot		; warm boot vector
-        extrn   ?pmsg           ; print message @<HL> up to 00
-                                ; saves <BC> & <DE>
-        extrn   ?pdec           ; print binary number in <HL> from 0 to 65535
+	extrn	?pmsg		; print message @<HL> up to 00
+				; saves <BC> & <DE>
+	extrn	?pdec		; print binary number in <HL> from 0 to 65535
 	extrn	?pderr		; print BIOS disk error header
 	extrn	?conin,?cono	; con in and out
 	extrn	?const		; get console status
@@ -327,11 +325,9 @@ set$this$entry:
 	push	h		; save table pointer
 	inx	h
 	mov	a,m		; get type info. 
-	xchg			; save table address in DE
-	lhld	DPH$pointer
-	dcx	h
-	mov	m,a		; save type code
-	xchg			; get table adr to HL
+	lded	DPH$pointer
+	dcx	d
+	ldax	d		; save type code
 	inx	h		; HL points to sector translation table 
 	mov	c,m		; ..zero if none
 	inx	h
@@ -740,26 +736,25 @@ wr$multi$sect:
 get$drv$info:
 	lhld	@dma
 	shld	local$dma
-	xchg
-	shld	DPH$pointer
+	sded	DPH$pointer
 
 	lda	@adrv			; get drive number (0 to F)
 	ana	a
 	cz	drive$A$E
 	cpi	'E'-'A'			; test if drive E
 	cz	drive$A$E
-	dcx	h			; point at drive mask
-	dcx	h
-	mov	a,m			; get drive mask
+	dcx	d			; point at drive mask
+	dcx	d
+	ldax	d			; get drive mask
 	mov	b,a			; save in B
 	sta	vic$drv			; save vic drive # (values 1,2,4,8)
 
-	inx	h			; point at disk type
+	inx	d			; point at disk type
 	xra	a
 	sta	sect$cnt		; clear the count
 	inr	a
 	sta	vic$count
-	mov	a,m			; get disk type
+	ldax	d			; get disk type
 	ana	a
 	ret
 
@@ -976,7 +971,7 @@ do$type$7:
 set$up$c64:
 	sta	VIC$sect	;
 	lda	@trk		;
-        cmp     b               ; carry=1 if A < dir$track
+	cmp	b		; carry=1 if A < dir$track
 	cmc			; add one if dir$track or more (carry not set)
 	aci	0		; add the carry bit in
 	sta	vic$trk
@@ -991,7 +986,7 @@ c1581$adj:
 	sta	vic$count
 
 	lda	@trk		;
-        cpi     C1581$dir$trk*2 ; carry=1 if A < dir$track
+	cpi	C1581$dir$trk*2	; carry=1 if A < dir$track
 	cmc			; add one if dir$track or more (carry not set)
 	aci	0		; add the carry bit in
 	rar			; track=@trk/2 ; carry set if odd
@@ -1128,7 +1123,7 @@ rd$1571$wait:
 	bit	3,c
 	jz	rd$1571$wait
 	mvi	c,0ch			; D1SDR
-        ini                             ; (hl) <- (bc) ; hl <- hl+1 ; b <- b-1
+	ini				; (hl) <- (bc) ; hl <- hl+1 ; b <- b-1
 	jmp	rd$1571$next
 
 
@@ -1255,7 +1250,7 @@ wait$status:
 ;	This routine is used to move a sector of data
 ;	 to/from the sector buffer and the DMA pointer.
 ;	     A=0 for buffer to DMA  (disk read)
-;            A<>0 for DMA to buffer (disk write)
+;	     A<>0 for DMA to buffer (disk write)
 ;
 	CSEG
 ?dkmov:
@@ -1532,7 +1527,7 @@ dpb$c128$DS:		; (170 allocation units)
 ;
 dpb$c64$cpm:		; (144 allocation units)
 	dpb	256,17,34,1024,64,3
-                
+		
 	page
 ;
 ; DPB FOR C128 CP/M 3.0 C1581 DSDD (3.5")	(    K )
@@ -1775,3 +1770,4 @@ status$atr	equ	0
 offset:		db	0
 
 	end
+
