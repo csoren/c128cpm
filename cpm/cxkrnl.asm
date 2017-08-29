@@ -1,4 +1,4 @@
-        title   'Root module of relocatable BIOS for CP/M 3.0 28 Aug 85'
+	title	'Root module of relocatable BIOS for CP/M 3.0 28 Aug 85'
 
 ; version 1.0	5 Sept 84
 
@@ -50,8 +50,11 @@ ccp	equ	0100h			; Console Command Processor
 
 ; user defined character I/O routines
 
-        extrn   ?ci,?co,?cist,?cost     ; each take device in <B>
-        extrn   ?cinit                  ; (re)initialize device in <C>
+	extrn	?ci,?co,?cist,?cost	; each take device in <B>
+	extrn	?out80,?kbin,?kbstat	; shortcut
+	extrn	?pt$o$1,?pt$s$1,?in$RS232
+	extrn	?in$st$RS232
+	extrn	?cinit			; (re)initialize device in <C>
 	extrn	@ctbl			; physical character device table
 
 ; disk communication data items
@@ -76,8 +79,7 @@ ccp	equ	0100h			; Console Command Processor
 	public	?pmsg			; print message
 	public	?pdec 			; print number from 0 to 65535
 	public	?pderr			; print BIOS disk error message header
-
-
+	
 	page
 
 ; External names for BIOS entry points
@@ -138,14 +140,17 @@ ccp	equ	0100h			; Console Command Processor
 	jmp	0		; reserved for future expansion
 	jmp	0		; reserved for future expansion
 
+
 	page
+
+
 ;
 ; BOOT
 ;	Initial entry point for system startup.
 
 	dseg			; this part can be banked
 boot:
-	lxi	sp,boot$stack
+	lxi	sp,bobo$stack
 	mvi	c,15		; initialize all 16 character devices
 c$init$loop:
 	push	b
@@ -169,10 +174,10 @@ d$init$loop:
 	jrz	d$init$next	; if null, no drive
 
 	push	h		; save @drv pointer 
-        xchg                    ; XDPH address in <HL>
-	dcx	h
-	dcx	h
-	mov	a,m
+	xchg                    ; XDPH address in <HL>
+	dcx     h
+	dcx     h
+	mov     a,m
 	sta	@RDRV		; get relative drive code
 	mov	a,c
 	sta	@ADRV		; get absolute drive code
@@ -187,7 +192,7 @@ d$init$next:
 	pop	b		; recover counter and drive #
 	inr	c
 	djnz	d$init$loop	; and loop for each drive
-	jmp	boot$1
+	jmp     boot$1
 
 	cseg			; following in resident memory
 boot$1:
@@ -201,7 +206,7 @@ boot$1:
 ;	Entry for system restarts.
 
 wboot:
-	lxi	sp,boot$stack
+	lxi	sp,bobo$stack
 	call	set$jumps	; initialize page zero
 	call	?rlccp		; reload CCP
 	jmp	ccp		; then reset jmp vectors and exit to ccp
@@ -223,10 +228,6 @@ set$jumps:
 	shld	6		; BDOS system call entry
 	ret
 
-
-		ds 64
-boot$stack	equ $
-
 	page
 ;
 ; DEVTBL
@@ -245,29 +246,34 @@ getdrv:
 
 ;
 ; CONOUT
-;       Console Output.  Send character in <C>
+;	Console Output.  Send character in <C>
 ;			to all selected devices
 conout:	
 	lhld	@covec		; fetch console output bit vector
-	jmp	out$scan
+	mvi	a,40h
+	cmp	h
+	jrnz	out$scan        ; 80 column only ? detour for time saving
 
-
+shrt$o:
+	sspd	sp$o+1		; shortcut, device output - save old stack
+	lxi	sp,bios$stack	; our own stack
+	lda	force$map	; get current bank
+	push	psw		; save on stack
+	sta	bank$0		; set bank 0 as current
+call$o:
+	call	?out80
+	pop	psw
+	sta	force$map	; set old bank back
+sp$o:
+	lxi	sp,0		; set old stack back, modified above
+	ret
 ;
 ; AUXOUT
-;       Auxiliary Output. Send character in <C>
+;	Auxiliary Output. Send character in <C>
 ;			to all selected devices
 auxout:
 	lhld	@aovec		; fetch aux output bit vector
-	jmp	out$scan
-
-
-;
-; LIST
-;       List Output.  Send character in <C>
-;			to all selected devices.
-list:
-	lhld	@lovec		; fetch list output bit vector
-
+				; no detour, xon-xoff too complex
 out$scan:
 	mvi	b,0		; start with device 0
 co$next:
@@ -291,6 +297,22 @@ not$out$device:
 	jrnz	co$next		; and go find them...
 	ret
 
+;
+; LIST
+;	List Output.  Send character in <C>
+;		to all selected devices.
+list:
+	lhld	@lovec		; fetch list output bit vector
+	mvi	a,10h
+	cmp	h
+	jrnz	out$scan	; printer #1 only ? detour for time saving
+	lxi	h,?pt$o$1	; if printer not present, char vanishes
+	shld	call$o+1	; contrary to the spec but better than
+	call	shrt$o		; waiting forever.
+	lxi	h,?out80
+	shld	call$o+1
+	ret
+
 	page
 ;
 ; CONOST
@@ -299,17 +321,12 @@ not$out$device:
 ;		are ready.
 conost:
 	lhld	@covec		; get console output bit vector
-	jr	ost$scan
+	mvi	a,0ffh-40h-20h
+	ana	h
+	jrnz	ost$scan        ; some screen only ? detour for time saving
+	ori	0ffh            ; screen is always ready.
+	ret
 
-
-;
-; AUXOST
-;	Auxiliary Output Status.  Return true if
-;		all selected auxiliary output devices
-;		are ready.
-auxost:
-	lhld	@aovec		; get aux output bit vector
-	jr	ost$scan
 
 
 ;
@@ -319,7 +336,21 @@ auxost:
 ;		are ready.
 listst:
 	lhld	@lovec		; get list output bit vector
+	mvi	a,10h
+	cmp	h
+	jrnz	ost$scan	; printer #1 only ? detour for time saving
+	lxi	h,?pt$s$1
+	shld	call$no+1
+	jmp	shrt$no
 
+;
+; AUXOST
+;	Auxiliary Output Status.  Return true if
+;		all selected auxiliary output devices
+;		are ready.
+auxost:
+	lhld	@aovec		; get aux output bit vector
+				; no detour, too complicated (xon-xoff)
 ost$scan:
 	mvi	b,0		; start with device 0
 cos$next:
@@ -351,7 +382,7 @@ coster:				; check for output device ready,
 	dad	d		; make address of mode byte
 	mov	a,m
 	ani	mb$xonxoff
-        pop     h               ; recover console number in <HL>
+	pop	h		; recover console number in <HL>
 	jz	?cost		; not a xon device, go get output status direct
 	lxi	d,xofflist
 	dad	d		; make pointer to proper xon/xoff flag
@@ -371,7 +402,7 @@ not$s:
 	ana	m		; and mask with ctl-Q/ctl-S flag
 	ret			; return this as the status
 
-cist1:                          ; get input status with <BC> and <HL> saved
+cist1:				; get input status with <BC> and <HL> saved
 	push	b
 	push	h 
 	call	?cist
@@ -380,7 +411,7 @@ cist1:                          ; get input status with <BC> and <HL> saved
 	ora	a
 	ret
 
-cost1:                          ; get output status, saving <BC> & <HL>
+cost1:				; get output status, saving <BC> & <HL>
 	push	b
 	push	h
 	call	?cost
@@ -389,7 +420,7 @@ cost1:                          ; get output status, saving <BC> & <HL>
 	ora	a
 	ret
 
-ci1:                            ; get input, saving <BC> & <HL>
+ci1:				; get input, saving <BC> & <HL>
 	push	b
 	push	h
 	call	?ci
@@ -405,7 +436,28 @@ ci1:                            ; get input, saving <BC> & <HL>
 ;		has an available character.
 const:
 	lhld	@civec		; get console input bit vector
-	jr	ist$scan
+	mvi	a,80h
+	cmp	h
+	jrnz	ist$scan	; keyboard only ? detour for time saving
+	lxi	h,?kbstat
+	shld	call$no+1
+
+shrt$no:
+	sspd	sp$no+1		; shortcut, non-output device i/o
+	lxi	sp,bios$stack	; our own stack
+	lda	force$map	; get current bank
+	push	psw		; save on stack
+	sta	bank$0		; set bank 0 as current
+call$no:
+	call	?kbstat
+	mov	c,a
+	pop	psw
+	sta	force$map	; set old bank back
+sp$no:
+	lxi	sp,0		; set old stack back, modified above
+	mov	a,c
+	ora	a
+	ret
 
 
 ;
@@ -415,6 +467,12 @@ const:
 ;		has an available character.
 auxist:
 	lhld	@aivec		; get aux input bit vector
+	mvi	a,2h
+	cmp	h
+	jrnz	ist$scan	; RS232 only ? detour for time saving
+	lxi	h,?in$st$RS232
+	shld	call$no+1
+	jmp	shrt$no
 
 ist$scan:
 	mvi	b,0		; start with device 0
@@ -438,14 +496,24 @@ cis$next:
 ;		ready console input device.
 conin:
 	lhld	@civec
-	jr	in$scan
-
+	mvi	a,80h
+	cmp	h
+	jrnz	in$scan		; keyboard only ? detour for time saving
+	lxi	h,?kbin
+	shld	call$no+1
+	jmp	shrt$no
 
 ; AUXIN
 ;	Auxiliary Input.  Return character from first
 ;		ready auxiliary input device.
 auxin:
 	lhld	@aivec
+	mvi	a,2h
+	cmp	h
+	jrnz	in$scan		; RS232 only ? detour for time saving
+	lxi	h,?in$RS232
+	shld	call$no+1
+	jmp	shrt$no
 
 in$scan:
 	push	h		; save bit vector
@@ -472,8 +540,8 @@ ci$rdy:
 ;	Utility Subroutines
 
 
-?pmsg:                          ; print message @<HL> up to a null
-                                ; saves <BC> & <DE>
+?pmsg:				; print message @<HL> up to a null
+				; saves <BC> & <DE>
 	push	b
 	push	d
 pmsg$loop:
@@ -491,58 +559,58 @@ pmsg$exit:
 	pop	b
 	ret
 
-?pdec:                          ; print binary number 0-65535 from <HL>
-	lxi	b,table10
-	lxi	d,-10000
+?pdec:				; print binary number 0-65535 from <HL>
+;	lxi	b,table10
+;	lxi	d,-10000
 next:
-	mvi	a,'0'-1
+;	mvi	a,'0'-1
 pdecl:
-	push	h
-	inr	a
-	dad	d
-	jrnc	stoploop
-	inx	sp
-	inx	sp
-	jr	pdecl
+;	push	h
+;	inr	a
+;	dad	d
+;	jrnc	stoploop
+;	inx	sp
+;	inx	sp
+;	jr	pdecl
 stoploop:
-	push	d
-	push	b
-	mov	c,a
-	call	?cono
-	pop	b
-	pop	d
+;	push	d
+;	push	b
+;	mov	c,a
+;	call	?cono
+;	pop	b
+;	pop	d
 nextdigit:
-	pop	h
-	ldax	b
-	mov	e,a
-	inx	b
-	ldax	b
-	mov	d,a
-	inx	b
-	mov	a,e
-	ora	d
-	jrnz	next
-	ret
+;	pop	h
+;	ldax	b
+;	mov	e,a
+;	inx	b
+;	ldax	b
+;	mov	d,a
+;	inx	b
+;	mov	a,e
+;	ora	d
+;	jrnz	next
+;	ret
 
 table10:
-	dw	-1000,-100,-10,-1,0
+;	dw	-1000,-100,-10,-1,0
 
 
 ?pderr:
-	lxi	h,drive$msg
-	call	?pmsg			; error header
-	lda	@adrv
-	adi	'A'
-	mov	c,a
-	call	?cono			; drive code
-	lxi	h,track$msg
-	call	?pmsg			; track header
-	lhld	@trk
-	call	?pdec			; track number
-	lxi	h,sector$msg
-	call	?pmsg			; sector header
-	lhld	@sect
-	jr	?pdec			; sector number (call/ret)
+;	lxi	h,drive$msg
+;	call	?pmsg			; error header
+;	lda	@adrv
+;	adi	'A'
+;	mov	c,a
+;	call	?cono			; drive code
+;	lxi	h,track$msg
+;	call	?pmsg			; track header
+;	lhld	@trk
+;	call	?pdec			; track number
+;	lxi	h,sector$msg
+;	call	?pmsg			; sector header
+;	lhld	@sect
+;	jr	?pdec			; sector number (call/ret)
 
 
 ;
@@ -567,11 +635,11 @@ xofflist:
 ;	Disk I/O interface routines
 ;
 ; SELDSK
-;       Select Disk Drive.  Drive code in <C>.
+;	Select Disk Drive.  Drive code in <C>.
 ;		Invoke login procedure for drive
 ;		if this is first select.  Return
 ;		address of disk parameter header
-;               in <HL>
+;		in <HL>
 seldsk:
 	mov	a,c
 	sta	@adrv			; save drive select code
@@ -590,7 +658,7 @@ seldsk:
 	ani	1
 	jrnz	not$first$select	; examine login bit
 	push	h
-        xchg                            ; put pointer in stack & <DE>
+	xchg				; put pointer in stack & <DE>
 	lxi	h,-2
 	dad	d
 	mov	a,m
@@ -616,36 +684,30 @@ home:
 
 ;
 ; SETTRK
-;       Set Track. Saves track address from <BC>
+;	Set Track. Saves track address from <BC> 
 ;		in @TRK for further operations.
 settrk:
-	mov	l,c
-	mov	h,b
-	shld	@trk
+	sbcd	@trk
 	ret
 
 
 ;
 ; SETSEC
-;       Set Sector.  Saves sector number from <BC>
+;	Set Sector.  Saves sector number from <BC>
 ;		in @sect for further operations.
 setsec:
-	mov	l,c
-	mov	h,b
-	shld	@sect
+	sbcd	@sect
 	ret
 
 
 ;
 ; SETDMA
 ;	Set Disk Memory Address.  Saves DMA address
-;               from <BC> in @DMA and sets @DBNK to @CBNK
+;		from <BC> in @DMA and sets @DBNK to @CBNK
 ;		so that further disk operations take place
 ;		in current bank.
 setdma:
-	mov	l,c
-	mov	h,b
-	shld	@dma
+	sbcd	@dma
 	lda	@cbnk		; default DMA bank is current bank
 				; fall through to set DMA bank
 
@@ -662,9 +724,9 @@ setbnk:
 ;
 ;	
 ; SECTRN
-;       Sector Translate.  Indexes skew table in <DE>
-;               with sector in <BC>.  Returns physical sector
-;               in <HL>.  If no skew table (<DE>=0) then
+;	Sector Translate.  Indexes skew table in <DE>
+;		with sector in <BC>.  Returns physical sector
+;		in <HL>.  If no skew table (<DE>=0) then
 ;		returns physical=logical.
 sectrn:
 	mov	l,c
@@ -754,9 +816,10 @@ flush:
 ;
 ; error message components
 ;
-drive$msg:	db	cr,lf,bell,'BIOS Error on ',0
-track$msg:	db	': T-',0
-sector$msg:	db	', S-',0
+;drive$msg:	db	cr,lf,bell,'BIOS Error on ',0
+;track$msg:	db	': T-',0
+;sector$msg:	db	', S-',0
 
 
 	end
+

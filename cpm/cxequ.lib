@@ -15,13 +15,13 @@ banked		equ	true
 EXTSYS		equ	false	; use external system as disk and char I/O
 pre$release	equ	false
 
-; start at Jan 1,1978	 78  79  80  81  82  83  84  85  86
-dt$hx$yr	equ	365+365+366+365+365+365+366+365+365
-;	1985			  1  2  3  4  5  6  7  8  9 10 11 12
-date$hex	equ	dt$hx$yr+31+28+31+30+28
+; start at Jan 1,1978	 78  79  80  81  82  83  84  85  86  87  88  89  90  91  92  93  94  95  96  97
+dt$hx$yr	equ	365+365+366+365+365+365+366+365+365+365+366+365+365+365+366+365+365+365+366+365
+;	1998		          1  2  3  4  5  6  7  8  9 10 11 12
+date$hex        equ     dt$hx$yr+31+28+31+30+04
 
 date	macro
-	db	'28 May 87'
+	db	'04 May 98'
 	endm
 ;
 ;	this is only for Pre-Released versions (done in RED)
@@ -61,7 +61,7 @@ screen$40	equ	1400h	; 2 X 80 X 25 = 4000
 BANK$parm$blk	equ	2400h	; allow 0.5K of parameters
 BIOS8502	equ	2600h	; 1.5K
 VIC$screen	equ	2C00h	; 1K
-ccp$buffer	equ	3000h	; 0c80h (allow 4K)
+ccp$buffer	equ	0e000h	; 0c80h (allow 4K)
 bank0$free	equ	4000h	; start of free area in bank 0
 ;
 ; mapped I/O locations
@@ -70,7 +70,7 @@ VIC		equ	0D000h		; 8564
 SID		equ	0D400h		; 6581
 MMU		equ	0D500h		; 8722
 DS8563		equ	0D600h		; 8563
-INT$6551	equ	0D700h		; 6551 (added to enginnerring units)
+INT$6551	equ	0D700h		; 6551 (added to enginneering units)
 VIC$C$H		equ	0D800h		; (memory mapped only in IO$0)
 VIC$C$L		equ	01000h		; (memory and i/o mapped in IO$0)
 CIA1		equ	0DC00h		; 6526
@@ -78,13 +78,20 @@ CIA2		equ	0DD00h		; 6526
 USART		equ	0DE00h		; 6551 (extrn card)
 RAM$dsk$base	equ	0DF00h		; 8726
 
+kerb$bank$mid	equ	0DE3Eh		; Address bits 15..8 for RAM.
+kerb$bank$hi	equ	0DE3Fh		; bit 0 - RAM address bit 16
+kerb$sram	equ	0DF00h
+
 ;
 ; Common memory allocation
 ;
 int$block	equ	0FC00h	; mode 2 interrupt pointers (to FDFDh) 
 parm$block	equ	0FD00h	; system parameters
 @buffer		equ	0FE00h	; disk buffer (256 bytes)
-;			0FF00h	; to 0FFFFh used by 8502
+;			0FF00h	; to 0FFFFh used by 8502(?)
+bios$stack	equ	0FFD0H	; downwards
+bobo$stack	equ	0FF90H	; downwards
+intr$stack	equ	0FF60H	; downwards
 ;
 ; the following are C128 system equates
 ;
@@ -107,12 +114,12 @@ space	fast,1			;  bit 0 set, drv 0 is fast. ect.
 space	key$tbl,2		;; pointer to keyboard table
 space   fun$tbl,2               ;; pointer to function table
 space   color$tbl$ptr,2         ;; pointer to logical color table
-space   fun$offset,1            ;; function # to be preformed
+space	fun$offset,1		;; function # to be preformed
 space	sound$1,2		;;
 space	sound$2,2		;;
 space	sound$3,2		;;
 
-space   @trk,2                  ;; current track number
+space	@trk,2			;; current track number
 space	@dma,2			;; current DMA address
 ;
 ; below here not used by ROM
@@ -219,7 +226,7 @@ space   char$row,1              ;;
 space   current$atr,1           ;;
 space	bg$color$80,1		;;
 space	char$color$80,1		;;
-;	ROM uses localtions above this point
+;	ROM uses locations above this point
 ;
 ;===> Emulation parameters
 space	parm$base,2
@@ -273,7 +280,7 @@ SF$exit		equ	001h		; RETURN KEY
 SF$insert	equ	028h		; PLUS KEY
 SF$delete	equ	02Bh		; MINUS KEY
 alpha$toggle	equ	03Dh		; commodore key
-alt$key		equ	050h		; alterant key
+alt$key		equ	050h		; alternate key
 SF$left		equ	055h		; left arrow key
 lf$arrow	equ	055h		; left arrow key
 SF$right	equ	056h		; right arrow key
@@ -348,7 +355,7 @@ DS$color	equ	26
 ;===> status bits
 DS$ready	equ	80h
 DS$lt$pen	equ	40h
-;===> display memory layout  (16K) 0-3fffh
+;===> display memory layout  (16K) 0-3fffh 
 DS$screen	equ	0000h
 DS$attribute	equ	0800h
 DS$char$def	equ	2000h
@@ -382,6 +389,7 @@ lt$blue		equ	14
 lt$grey		equ	15
 
       page
+
 RM$status	equ	RAM$dsk$base	;read only register
 ;   bit 7	Interrupt pending if 1
 ;	6	Transfer complete if 1
@@ -398,9 +406,9 @@ RM$command	equ	RAM$dsk$base+1	;r/w
 ;			next byte to read/write.)
 ;	4	disable FF00 decode if set (do operation after command writen)
 ;	3,2	reserved
-;       1,0     00 = transfer C128 --> Ram Disk
-;               01 = Transfer C128 <-- Ram Disk
-;               10 = swap     C128 <-> Ram Disk
+;	1,0	00 = transfer C128 --> Ram Disk
+;		01 = Transfer C128 <-- Ram Disk
+;		10 = swap     C128 <-> Ram Disk
 ;		11 = Verify   C128  =  Ram Disk
 ;
 RM$128$low	equ	RAM$dsk$base+2	;r/w
@@ -570,6 +578,7 @@ R$write$memory		equ	180h+0
 R$read$memory		equ	180h+3
 R$set$update$adr	equ	180h+6
 R$wait			equ	180h+9
+R$init$charset		equ	5bdh
 
 R$status$color$tbl	equ	1000h-246-16
 R$color$convert$tbl	equ	1000h-230-16
@@ -634,7 +643,7 @@ c1581$dir$trk	equ	39		; C1581 disk dir track
 ;	6510 commands
 ;
 vic$reset	equ	-1	; reboot C128
-vic$init	equ	0	; initilize the bios8502
+vic$init	equ	0	; initialize the bios8502
 vic$rd		equ	1	; read one sector of data (256 bytes) 
 vic$wr		equ	2	; write one sector of data
 vic$rdF		equ	3	; set-up for fast read (many sectors)
@@ -643,10 +652,13 @@ vic$test	equ	5	; test current disk in drive
 vic$query	equ	6	; get start sectors and #sector/trk
 vic$prt		equ	7	; print data character
 vic$frmt	equ	8	; format a disk (1541)
-vic$user$fun	equ	9
+vic$user$fun	equ	9	; call user 6502 code
 vic$RM$rd	equ	10	; RAM disk read
 vic$RM$wr	equ	11	; RAM disk write
-
+vic$prst	equ	12	; printer status
+vic$PT$rd	equ	13	; 8502 processor port read
+vic$PT$wr	equ	14	; 8502 processor port write
+vic$80$init	equ	15	; copy ROM chars to VDC RAM
 ;
 ;	control charactors
 ;
@@ -654,6 +666,7 @@ eom		equ	00h
 bell		equ	07h
 bs		equ	08h
 lf		equ	0ah
+ff		equ	0ch
 cr              equ     0dh
 xon             equ     11h
 xoff		equ	13h

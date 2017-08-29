@@ -2,7 +2,9 @@
 
 This repository contains scripts, tools and source needed to build a Commodore 128 CP/M system disk.
 
-Currently only CPM+.SYS is built from source, while the rest of the binaries are taken from the 28th May 1987 release.
+You're viewing the *cpmfast* branch, which contains fixes and speedups for 80 column mode.
+
+Currently only CPM+.SYS is built from source, while the rest of the binaries are taken from the updated cpmfast release.
 
 ## Building
 
@@ -20,5 +22,5 @@ It's possible to use the Windows Subsystem for Linux to build. Tested with Ubunt
 
 Then just run
 
-    $ ./build-unix-sh
+    $ ./build-unix.sh
     

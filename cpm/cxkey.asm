@@ -1,5 +1,5 @@
 
-        title   'C128 keyboard handler   18 Feb 86'
+	title	'C128 keyboard handler   18 Feb 86'
 
 	maclib	cxequ
 
@@ -11,14 +11,14 @@
 	extrn	?stat,?save,?recov
 	extrn	?dskst
 
-	extrn	?di$int
+	extrn	?fun65
 
 	extrn	cmdsk0,cmdsk1,cmdsk2,cmdsk3,cmdsk4
 
 	extrn	@pageM
 
 	extrn	adm31
-	public	setadm
+;	public	setadm
 
   if	use$VT100
 	extrn	vt100
@@ -56,7 +56,14 @@
 	lxi	d,key$buffer+1
 	lxi	b,key$buf$size-1
 	ldir
+	lhld	key$tbl
+	lxi	d,-(8*4*8)
+	dad	d
+	shld	gkey$tbl
 	ret
+
+gkey$tbl:
+	dw	0
 
 	page
 ;==========================================================
@@ -80,9 +87,9 @@ re$scan:
 	push	psw
 
 	mov	a,c
+	cma
 	ani	special
-	cpi	special		; control and rt. shift key
-	jrnz	not$special
+	jnz	not$special
 
 	mov	a,b		; get the matrix position
 	cpi	rt$arrow
@@ -99,6 +106,7 @@ re$scan:
 ;
 not$special:
 	pop 	psw
+	rp
 	mov	d,a
 	lda	stat$enable
 	ani	80h		; mask off plain keys bit
@@ -110,8 +118,8 @@ not$special:
 ;
 ;
 test$function:
-	cpi	080h		; check for MSB set 
-	rc			; return if not
+	ora	a		; check for MSB set 
+	rp			; return if not
 
 	cpi	0A0h		; 80-9F are function keys
 	jrnc	not$8x
@@ -142,7 +150,7 @@ more$mess:
 	ora	a		; check character (maybe 1st is 0)
 	jrz	re$scan		; scan keys (no valid function key)
 
-	jrnz	test$function	; test for local function
+	jr	test$function	; test for local function
 
 	page
 ;
@@ -222,7 +230,7 @@ must$be$Fx:
 FX$V$tbl:
 	dw	toggle$dsk$stat		; F0
 	dw	display$pause		; F1
-	dw	toggle$track$40		; F2
+	dw	empty			; F2
 	dw	cur$lf			; F3
 	dw	cur$rt			; F4
 	dw	reset$mfm		; F5
@@ -309,7 +317,7 @@ pause$disp$loop:
 pause$loop:
 	call	scan$keys
 	jrz	pause$loop
-	cpi	cr			; pause key function code
+	cpi	0f1h			; pause key function code
 	jrnz	pause$loop
 	jmp	recov$small
 
@@ -325,12 +333,12 @@ pause$MSG:
 ;	A Zero in bit 6 of STAT$ENABLE will enable tracking
 ;	the cursor on data input with the 40 column display
 ;
-toggle$track$40:
-	lda	stat$enable
-	xri	40h
-	sta	stat$enable
-empty:
-	ret
+;toggle$track$40:
+;	lda	stat$enable
+;	xri	40h
+;	sta	stat$enable
+;empty:
+;	ret
 
 
 
@@ -338,14 +346,14 @@ empty:
 ;
 ;	Function F3
 ;
-;	Move 40 column window left one positions
+;	Move 40 column window left one half screen
 ;
 cur$lf:
 	lda	@off40
 	ora	a
 	rz
 
-	dcr	a
+	sui	20
 	jr	cur$update$cont
 
 
@@ -363,7 +371,7 @@ cur$rt:
 	lda	@off40
 	cpi	40
 	rz
-	inr	a
+	adi	20
 cur$update$cont:
 	sta	@off40
 	RCALL	FR$set$cur$40
@@ -390,26 +398,25 @@ reset$mfm:
 	lda	cmdsk4+42
 	ani	7fh
 	sta	cmdsk4+42		; unlock drive E
+empty:
 	ret
 
 ;
 ;	Function F6
 ;
+  if use$vt100
 set$adm:
 	lxi	h,ADM31
-  if	use$vt100
 	jr	set$emulation
-
 ;
 ;	Function F7
 ;
 set$VT:
 	lxi	h,VT100
 set$emulation:
-  endif
 	shld	emulation$adr
 	ret
-
+  endif
 ;
 ;
 ;	THIS CODE IS NOT FUNCTIONAL YET
@@ -554,11 +561,11 @@ check$delete:
 	rz				; don't want to delete end markers
 
 	xchg				; save in DE
-	lhld	key$tbl			; get next table adr (keytbl)
+	lhld	gkey$tbl		; get next table adr (gkeytbl)
 	dcx	h
-; lxi	h,msgtbl$end-1		; end adr
+;       lxi     h,msgtbl$end-1          ; end adr
 	xra	a			; clear the carry flag
-	dsbc	DE			; compute number of bytes to move
+	dsbc	d			; compute number of bytes to move
 	mov	b,h
 	mov	c,l			; place count in BC
 	mov	h,d
@@ -587,7 +594,7 @@ check$insert:
 ;
 insert$space:
 	xchg
-	lhld	key$tbl			; get start of next table
+	lhld	gkey$tbl		; get start of next table
 	dcx	h			; point to end of msg table
 ; lxi	h,msgtbl$end-1
 	xra	a
@@ -595,11 +602,11 @@ insert$space:
 	rz				; yes, don't insert 
 
 	xra	a			; clear the carry flag
-	dsbc	DE			; compute number of bytes to move
+	dsbc	d			; compute number of bytes to move
 	mov	b,h
 	mov	c,l			; place count in BC
 
-	lhld	key$tbl
+	lhld	gkey$tbl
 	dcx	h
 	mov	d,h
 	mov	e,l
@@ -708,7 +715,7 @@ compute$adr:
 disp$fun$key:
 	mvi	a,buff$pos
 	sta	offset
-        mvi     a,'>'                   ; display start prompt '>'
+	mvi	a,'>'			; display start prompt '>'
 	call	disp$status
 
 	lhld	msg$ptr
@@ -745,7 +752,7 @@ disp$fun$loop:
 
 
 disp$fun$end:
-        mvi     a,'<'                   ; display end prompt '<'
+	mvi	a,'<'			; display end prompt '<'
 disp$space$fill:
 	call	disp$status
 	lda	offset			; get current cursor position
@@ -874,14 +881,23 @@ scan$keys:
 	mov	a,m		; M=-1 if buffer empty
 	mov	b,a		; B=-1 if no character
 	inr	a
-	rz			; return if no key is pressed
+	jrnz	is$key		; go on
+	lxi	h,caps$count
+	inr	m
+	jrz	test$caps
+	ora	a
+	ret
+caps$count:
+	db	0
+
 ;
 ;	there is a character in the buffer,
 ;	advance key$get$ptr to next character.
 ;
+is$key:
 	mov	a,l
-	adi	2
-	cpi	low(key$buffer+key$buf$size)
+	adi     2
+	cpi     low(key$buffer+key$buf$size)
 	jrnz	not$buf$end
 	mvi	a,low(key$buffer)
 not$buf$end:
@@ -920,14 +936,71 @@ is$control$or$shift:
 	ani	3
 	add	l		; add the offset 
 	mov	l,a		; update the pointer
-	xchg
-	lhld	key$tbl		; get the start of the ASCII table
+	lded	key$tbl		; get the start of the ASCII table
 	dad	d		; HL now points to the ASCII value
 	mov	a,m		; for the input key.
 	ora	a		; set zero flag if A=0
 	ret
 
+test$caps:
+	mvi	a,vic$PT$rd        
+	call	?fun65
+	lda	vic$data
+	ani	40h
+caps$st equ	$+1
+	cpi	40h
+	jrnz	is$caps
+	lxi	b,-1
+	xra	a
+	ret
+is$caps:
+	sta	caps$st
+	mvi	a,vic$80$init
+	call	?fun65
+	call	R$init$charset
+	lda	caps$st
+	ora	a
+	jrnz	end$caps
+	lxi	d,g$table
+	mvi	b,6
+	lxi	h,35b0h
+	push	h
+	RCALL	FR$char$inst
+	mvi	b,4
+	lxi	h,37b0h
+	push	h
+	RCALL	FR$char$inst
+end$caps:
+	lhld	gkey$tbl
+	lxi	d,@buffer
+	lxi	b,100h
+	ldir
+	lhld	key$tbl
+	lded	gkey$tbl
+	mvi	b,1		; lxi b,100h
+	ldir
+	lxi	h,@buffer
+	lded	key$tbl
+	mvi	b,1		; lxi b,100h
+	ldir
+	mvi	b,-1
+	xra	a
+	ret
+
+g$table:
+	db	5ah,24h,42h,7eh,42h,42h,42h,00h ; A umlaut
+	db	5ah,24h,42h,42h,42h,24h,18h,00h ; O umlaut
+	db	18h,42h,42h,42h,42h,42h,3ch,00h ; U umlaut
+	db	10h,28h,44h,00h,00h,00h,00h,00h ; circumflex
+	db	00h,00h,00h,00h,00h,00h,00h,0ffh; underline
+	db	20h,10h,08h,00h,00h,00h,00h,00h ; backquote
+	db	24h,00h,38h,04h,3ch,44h,3ah,00h ; a umlaut
+	db	24h,00h,3ch,42h,42h,42h,3ch,00h ; o umlaut
+	db	24h,00h,42h,42h,42h,46h,3ah,00h ; u umlaut
+	db	3ch,42h,42h,5ch,42h,42h,5ch,40h ; sz ligature
+
 	page
+
 ;
 ;	used to convert a keyboard matrix position into it's HEX
 ;	value (keys caps labelled with 0 to 9 and A to F)

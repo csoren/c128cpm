@@ -1,7 +1,7 @@
 
 
 
-        title   'Interrupt handler    29 Apr 86'
+	title	'Interrupt handler    29 Apr 86'
 
 
 	maclib	z80
@@ -35,6 +35,8 @@ buf$end	equ	low(RxD$buffer+RxD$buf$size)
 ;
 	CSEG
 ?sysint:
+	sspd	ld$sp+1                 ;20
+	lxi	sp,intr$stack           ;10
 	push	psw			;11
 	push	b			;11
 	push	h			;11
@@ -84,6 +86,8 @@ exit$int:
 	pop	h
 	pop	b
 	pop	psw
+ld$sp:
+	lxi	sp,0			; modified above
 	ei
 	ret
 
@@ -709,7 +713,7 @@ repeat$count	equ	$+1
 ;	CONF.COM looks for them to change the repeat rate.
 ;	also looks for RET ; MVI A,xx ; STA xxxx (see set$key$parm)
 ;
-	mvi	m,3			;10
+	mvi	m,2			;10
 	lxi	h,save$key		;10
 	shld	key$state+1		;16
 	ret				;10
@@ -884,7 +888,7 @@ bad$key:
 ;	the set repeat rate. (also RET above here)
 ;
 set$key$parm:
-	mvi	a,8			;7
+	mvi	a,6			;7
 	sta	repeat$count		;13  number of counts for repeat
 	lda	key$scan$tbl		;13
 	sta	matrix$pos		;13

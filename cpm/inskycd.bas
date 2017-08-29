@@ -1,0 +1,11 @@
+DIM a AS STRING * 1024
+
+OPEN "keycode.bin" FOR BINARY AS 1
+GET 1, &H1, a
+CLOSE 1
+
+OPEN "cpm#.sys" FOR BINARY AS 2
+PUT 2, &H101, a
+CLOSE 2
+SYSTEM
+
