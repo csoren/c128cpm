@@ -23,7 +23,7 @@
 	public	RMdsk
 
 	extrn	?fun65
-	extrn	?dkmov
+	extrn	?dkmov$hl
 
 	page
 ;
@@ -89,7 +89,7 @@ RM$write:
 	ana	a
 	lhld	@dma
 	jrz	RM$do$rd$wr
-        call    ?dkmov+3        ; A<>0 transfers data from local$DMA to buffer
+	call	?dkmov$hl	; A<>0 transfers data from local$DMA to buffer
 	mvi	d,VIC$RM$wr
 	jr	RM$do$rd$wr$buf
 ;
@@ -104,7 +104,7 @@ RM$read:
 
 	call	RM$do$rd$wr$buf	; no,  transfer through buffer
 	lhld	@dma
-	call	?dkmov+3	; A=0 transfers data from buffer to local$DMA
+	call	?dkmov$hl	; A=0 transfers data from buffer to local$DMA
 	xra	a
 	ret
 ;
@@ -249,14 +249,14 @@ kerberos$init:
 
 ;	Detect kerberos SRAM
 
-	jsr	kerberos$set$bank$0
+	call	kerberos$set$bank$0
 
 	lxi	b,kerb$sram
 	xra	a
 	outp	a
 
 	lxi	hl,1FFh			; select bank 1FFh
-	jsr	kerberos$set$bank
+	call	kerberos$set$bank
 
 	lxi	b,kerb$sram
 	dcr	a
@@ -265,7 +265,7 @@ kerberos$init:
 	cmp	e
 	jnz	kerberos$missing
 
-	jsr	kerberos$set$bank$0
+	call	kerberos$set$bank$0
 
 	lxi	b,kerb$sram
 	inp	e
@@ -277,6 +277,7 @@ kerberos$init:
 kerberos$missing:
 	lxi	h,0			; remove vector to RAM disk
 	shld	@dtbl+('M'-'A')*2	; .. (drive M:)
+kerberos$login:
 	ret
 
 kerberos$vectors:
@@ -302,6 +303,57 @@ kerberos$vectors:
 ;	A=2	disk write protected
 ;	A=FF	media change detected
 ;
+kerberos$write:
+	lhld	@trk
+	call	kerberos$setbank
+
+	lda	@dbnk		; get disk bank
+	ana	a
+	lhld	@dma
+	jrz	kerb$do$wr
+	call	?dkmov$hl	; A<>0 transfers data from local$DMA to buffer
+
+kerb$wr$buf:
+	lxi	h,@buffer
+kerb$do$wr:
+	lxi	b,kerb$sram
+kerb$do$wr$loop:
+	mov	d,m
+	outp	d
+	inx	h
+	inr	c
+	jnz	kerb$do$wr$loop
+
+	xra	a		; set no errors
+	ret
+
+kerberos$read:
+	lhld	@trk
+	call	kerberos$setbank
+
+	lda	@dbnk		; get disk bank
+	ana	a		; is it bank zero
+	lhld	@dma
+	jrz	kerb$do$rd	; yes, go read it
+
+	call	kerb$do$rd$buf	; no,  transfer through buffer
+	lhld	@dma
+	call	?dkmov$hl	; A=0 transfers data from buffer to local$DMA
+	xra	a
+	ret
+kerb$do$rd$buf:
+	lxi	h,@buffer
+kerb$do$rd:
+	lxi	b,kerb$sram
+kerb$do$rd$loop:
+	inp	d
+	mov	m,d
+	inx	h
+	inr	c
+	jnz	kerb$do$rd$loop
+
+	xra	a		; set no errors
+	ret
 
 
 kerberos$set$bank$0:

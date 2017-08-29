@@ -57,7 +57,7 @@
 	extrn	?di$int
 
 	public	?dskst
-	public	?dkmov
+	public	?dkmov$hl
 	extrn	?stat,@st40
 
 	page
@@ -1260,6 +1260,7 @@ wait$status:
 	CSEG
 ?dkmov:
 	lhld	local$DMA	; current DMA adr
+?dkmov$hl:
 	lxi	d,@buffer	; location of disk read/write buffer
 	lxi	b,256		; sector size
 ;
