@@ -2,9 +2,13 @@
 
 This repository contains scripts, tools and source needed to build a Commodore 128 CP/M system disk.
 
-You're viewing the *cpmfast* branch, which contains fixes and speedups for 80 column mode.
+You're viewing the *master* branch, which contains Kerberos SRAM expansion support, plus fixes and speedups for 80 column mode from the *cpmfast* release by Linards Ticmanis.
 
 Currently only CPM+.SYS is built from source, while the rest of the binaries are taken from the updated cpmfast release.
+
+[Download CP/M](releases/cpm+128.d71) for the Commodore 128
+
+[More information](releases/CPMFAST.md) on the cpmfast modifications.
 
 ## Building
 
