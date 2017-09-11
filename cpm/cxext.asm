@@ -50,7 +50,7 @@
 ;	drive table
 ;
 	public	@dtbl
-	extrn	cmdsk0,cmdsk1,cmdsk2,cmdsk3,cmdsk4,RMdsk
+	extrn	cmdsk0,cmdsk1,cmdsk2,cmdsk3,cmdsk4,RMdsk,kbdsk
 
 	page
 ;
@@ -73,7 +73,7 @@
     endif
 	dw	0			;* drive I
 	dw	0			;* drive J
-	dw	0			;* drive K
+	dw	kbdsk			;* drive K  Kerberos flash disk
 	dw	0			;* drive L
 	dw	RMdsk			;* drive M  Memory Disk (RAM disk)
 	dw	0			;* drive N

@@ -25,6 +25,9 @@
 	extrn	?fun65
 	extrn	?dkmov$hl
 
+	extrn	kerberos$is$present
+	extrn	kerberos$sram$set$bank
+
 	page
 ;
 	CSEG		; place code in common memory
@@ -188,7 +191,7 @@ test$for$ram$dsk:
 ;
 ;	No REU, try Kerberos
 ;
-	jr	kerberos$init
+	jr	kbsram$init
 
 ;
 ;	initialize directory buffer
@@ -238,8 +241,8 @@ vectored$write:
 ;	Kerberos SRAM support
 ;
 
-kerberos$init:
-	lxi	h,kerberos$vectors
+kbsram$init:
+	lxi	h,kbsram$vectors
 	lxi	d,RMdsk-10
 	lxi	bc,4*2
 	ldir
@@ -247,44 +250,24 @@ kerberos$init:
 	lxi	h,dpb$RM$128
 	shld	dpb$ptr	
 
-;	Detect kerberos SRAM
-
-	call	kerberos$set$bank$0
-
-	lxi	b,kerb$sram
-	xra	a
-	outp	a
-
-	lxi	hl,1FFh			; select bank 1FFh
-	call	kerberos$set$bank
-
-	lxi	b,kerb$sram
-	dcr	a
-	outp	a
-	inp	e
-	cmp	e
-	jnz	kerberos$missing
-
-	call	kerberos$set$bank$0
-
-	lxi	b,kerb$sram
-	inp	e
-	jz	initialize$directory	; found Kerberos
+	call	kerberos$is$present
+	ora	a
+	jrnz	initialize$directory	; found Kerberos
 	
 ;
 ;	device is missing, remove vector
 ;
-kerberos$missing:
+kbsram$missing:
 	lxi	h,0			; remove vector to RAM disk
 	shld	@dtbl+('M'-'A')*2	; .. (drive M:)
-kerberos$login:
+kbsram$login:
 	ret
 
-kerberos$vectors:
-	dw	kerberos$write
-	dw	kerberos$read
-	dw	kerberos$login
-	dw	kerberos$init
+kbsram$vectors:
+	dw	kbsram$write
+	dw	kbsram$read
+	dw	kbsram$login
+	dw	kbsram$init
 
 ;
 ; disk READ and WRITE entry points.
@@ -303,9 +286,9 @@ kerberos$vectors:
 ;	A=2	disk write protected
 ;	A=FF	media change detected
 ;
-kerberos$write:
+kbsram$write:
 	lhld	@trk
-	call	kerberos$setbank
+	call	kerberos$sram$set$bank
 
 	lda	@dbnk		; get disk bank
 	ana	a
@@ -327,9 +310,9 @@ kerb$do$wr$loop:
 	xra	a		; set no errors
 	ret
 
-kerberos$read:
+kbsram$read:
 	lhld	@trk
-	call	kerberos$setbank
+	call	kerberos$sram$set$bank
 
 	lda	@dbnk		; get disk bank
 	ana	a		; is it bank zero
@@ -353,18 +336,6 @@ kerb$do$rd$loop:
 	jnz	kerb$do$rd$loop
 
 	xra	a		; set no errors
-	ret
-
-
-kerberos$set$bank$0:
-	lxi	hl,0			; select bank 0
-
-;	hl - bank 0-1FF
-kerberos$set$bank:
-	lxi	b,kerb$bank$mid
-	outp	l
-	inr	c
-	outp	h
 	ret
 
 
