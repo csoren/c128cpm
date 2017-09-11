@@ -78,8 +78,14 @@ CIA2		equ	0DD00h		; 6526
 USART		equ	0DE00h		; 6551 (extrn card)
 RAM$dsk$base	equ	0DF00h		; 8726
 
-kerb$bank$mid	equ	0DE3Eh		; Address bits 15..8 for RAM.
+kerb$midi$addr 	equ	0DE39h
+kerb$midi$cfg 	equ	0DE3Ah
+kerb$cart$ctl 	equ	0DE3Bh
+kerb$cart$cfg 	equ	0DE3Ch
+kerb$flash$bank	equ	0DE3Dh		; Address bits 20..13 for flash
+kerb$sram$bank	equ	0DE3Eh		; Address bits 15..8 for RAM.
 kerb$bank$hi	equ	0DE3Fh		; bit 0 - RAM address bit 16
+					; bit 1 - Flash address bit 21
 kerb$sram	equ	0DF00h
 
 ;

@@ -66,13 +66,58 @@ kbdsk$init:
 ;
 ;	device is missing, remove vector
 ;
-	lxi	h,0			; remove vector to RAM disk
+	lxi	h,0			; remove vector to flash disk
 	shld	@dtbl+('K'-'A')*2	; .. (drive K:)
 kbdsk$login:
 	ret
 
+;
+; disk READ and WRITE entry points.
+; These entries are called with the following arguments:
+;	relative drive number in @rdrv (8 bits)
+;	absolute drive number in @adrv (8 bits)
+;	disk transfer address in @dma (16 bits)
+;	disk transfer bank	in @dbnk (8 bits)
+;	disk track address	in @trk (16 bits)
+;	disk sector address	in @sect (16 bits)
+;	pointer to XDPH in <DE>
+;
+;   return with an error code in <A>
+;	A=0	no errors
+;	A=1	non-recoverable error
+;	A=2	disk write protected
+;	A=FF	media change detected
+;
+
 kbdsk$write:
+	mvi	a,1			; set error
+	ret
+
 kbdsk$read:
+	lhld	@trk
+	call	kerberos$flash$set$bank
+
+	di
+
+	lxi	h,force$map
+	mov	a,m
+	push	psw
+	mvi	m,00111011b	; 00 - BANK 0, 11 - RAM, 10 - EXT ROM, 1 - RAM, 1 - RAM/ROM
+
+	lda	@sect
+	adi	080h
+	mov	h,a
+	xra	a
+	mov	l,a
+	lxi	d,@buffer
+	lxi	b,0100h
+	lddr
+
+	pop	psw
+	sta	force$map
+
+	ei
+
 	mvi	a,1			; set error
 	ret
 
@@ -82,6 +127,12 @@ kerberos$is$present:
 	rp
 
 ;	Detect kerberos SRAM
+
+	xra	a
+	lxi	b,kerb$cart$ctl
+	outp	a
+	inr	c
+	outp	a
 
 	call	kerberos$sram$set$bank$0
 
@@ -115,12 +166,21 @@ kerberos$detect$done:
 	ret
 
 
+;	hl - bank 0-1FF
+kerberos$flash$set$bank:
+	lxi	b,kerb$flash$bank
+	outp	l
+	mvi	c,LOW kerb$bank$hi
+	slar	h
+	outp	h
+	ret
+
 kerberos$sram$set$bank$0:
 	lxi	hl,0			; select bank 0
 
 ;	hl - bank 0-1FF
 kerberos$sram$set$bank:
-	lxi	b,kerb$bank$mid
+	lxi	b,kerb$sram$bank
 	outp	l
 	inr	c
 	outp	h
