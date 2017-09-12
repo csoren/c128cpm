@@ -8,6 +8,7 @@
 
 	public	kerberos$is$present
 	public	kerberos$sram$set$bank
+	public	kerberos$buffer$to$dma
 
 	public	kbdsk
 
@@ -118,7 +119,10 @@ kbdsk$read:
 
 	ei
 
-	mvi	a,1			; set error
+kerberos$buffer$to$dma:
+	lhld	@dma
+	call	?dkmov$hl	; A=0 transfers data from buffer to local$DMA
+	xra	a
 	ret
 
 kerberos$is$present:

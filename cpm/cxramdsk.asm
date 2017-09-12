@@ -27,6 +27,7 @@
 
 	extrn	kerberos$is$present
 	extrn	kerberos$sram$set$bank
+	extrn	kerberos$buffer$to$dma
 
 	page
 ;
@@ -250,6 +251,9 @@ kbsram$init:
 	lxi	h,dpb$RM$128
 	shld	dpb$ptr	
 
+	lxi	h,007Fh-4		; Reserve 4 AU's (4 KiB) for Kerberos flash disk
+	shld	dpb$RM$128+5
+
 	call	kerberos$is$present
 	ora	a
 	jrnz	initialize$directory	; found Kerberos
@@ -320,10 +324,7 @@ kbsram$read:
 	jrz	kerb$do$rd	; yes, go read it
 
 	call	kerb$do$rd$buf	; no,  transfer through buffer
-	lhld	@dma
-	call	?dkmov$hl	; A=0 transfers data from buffer to local$DMA
-	xra	a
-	ret
+	jp	kerberos$buffer$to$dma
 kerb$do$rd$buf:
 	lxi	h,@buffer
 kerb$do$rd:
