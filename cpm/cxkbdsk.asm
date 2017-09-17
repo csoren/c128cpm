@@ -94,9 +94,32 @@ kbdsk$write:
 	mvi	a,1			; set error
 	ret
 
+; hl - sector
+copy$sector$to$sram:
+	push	h
+	lxi	h,200h-16
+	push	h
+copy$next$bank:
+	call	kerberos$sram$set$bank
+	pop	d
+	pop	h
+	lxi	bc,kerb$sram
+copy$next$byte:
+	mov	a,m
+	outp	a
+	inx	hl
+	inr	c
+	jrnz	copy$next$byte
+	inr	e
+	rz
+	push	h
+	push	d
+	xchg
+	jr	copy$next$bank
+
 kbdsk$read:
 	lhld	@trk
-	call	kerberos$flash$set$bank
+	call	kerberos$disk$set$bank
 
 	di
 
@@ -169,26 +192,49 @@ kerberos$detect$done:
 	sta	kerberos$status
 	ret
 
+;	hl - bank 0-47
+kerberos$disk$set$bank:
+	mov	a,l
+	adi	8
+	mov	l,a
 
 ;	hl - bank 0-1FF
 kerberos$flash$set$bank:
-	lxi	b,kerb$flash$bank
-	outp	l
-	mvi	c,LOW kerb$bank$hi
-	slar	h
-	outp	h
-	ret
+	shld	kerberos$flash$addr
+	jr	kerberos$set$banks
 
 kerberos$sram$set$bank$0:
 	lxi	hl,0			; select bank 0
 
 ;	hl - bank 0-1FF
 kerberos$sram$set$bank:
-	lxi	b,kerb$sram$bank
-	outp	l
-	inr	c
-	outp	h
+	shld	kerberos$sram$addr
+kerberos$set$banks:
+	lxi	b,kerb$flash$bank
+	lxi	h,kerberos$flash$addr
+
+	mov	a,m	; flash lo byte
+	outp	a
+
+	inx	h
+	mov	a,m	; flash hi byte
+	add	a
+
+	inx	h
+	mov	d,m	; sram lo byte
+	inx	b
+	outp	d
+
+	inx	h
+	or	a,m
+	inx	b
+	outp	a
 	ret
+
+kerberos$flash$addr:
+	dw	0h
+kerberos$sram$addr:
+	dw	0h
 
 kerberos$status:
 	db	0FFh
