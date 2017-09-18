@@ -17,6 +17,8 @@
 ;
 	CSEG		; place code in common memory
 
+sram$sector$bank	EQU	200h-16
+
 ;
 ; Extended Disk Parameter Headers (XPDHs)
 ;
@@ -96,56 +98,102 @@ kbdsk$write:
 	ret
 
 ; hl - CPU address sector
+copy$sram$to$flash:
+	push	b
+	push	d
+	push	hl
+
+	call	erase$sector
+
+	lxi	d,sram$sector$bank
+	call	krb$sram$set$bank
+
+	lxi	b,krb$sram
+	lxi	d,01000h
+
+flash$next$byte:
+	inp	a
+	cpi	0FFh
+	jrz	do$next$byte
+
+	push	d
+	push	psw
+
+	lded	krb$flash$addr
+
+	call	prepare$write
+
+	mvi	a,0A0h
+	sta	08AAAh		; Cycle 3 - AAAh <- 80h
+
+	call	krb$flash$set$bank
+
+	pop	psw
+	pop	d
+
+	mov	m,a		; Cycle 4 - write data
+
+	; wait 10 us - 20 cycles at 2 MHz
+	; The next commands take longer
+
+do$next$byte:
+	dcx	de			; 6
+	jrz	flash$done		; 7
+	inx	hl			; 6
+	inr	c			; 4
+	cz	krb$sram$set$next$bank	; 10
+	jr	flash$next$byte		; 12
+	
+flash$done:
+	pop	hl
+	pop	d
+	pop	b
+
+
+; hl - CPU address sector
 erase$sector:
-	push	h
-	lhld	krb$flash$addr
-	push	h
+	push	d
+	lded	krb$flash$addr
+
 	call	prepare$write
 
 	mvi	a,080h
-	stax	d		; Cycle 3 - AAAh <- 80h
+	sta	08AAAh		; Cycle 3 - AAAh <- 80h
 	mvi	a,0AAh
-	stax	d		; Cycle 4 - AAAh <- AAh
+	sta	08AAAh		; Cycle 4 - AAAh <- AAh
 	cma
-	stax	b		; Cycle 5 - 555h <- 55h
+	sta	08555h		; Cycle 5 - 555h <- 55h
 
-	pop	h
 	call	krb$flash$set$bank
 
-	pop	h
 	mvi	m,050h		; Cycle 6 - Sector base <- 50h
 
 	; wait 25 ms - 50000 cycles at 2 MHz
-	lxi	b,2800
+	lxi	d,2800
 erase$wait:
-	dcx	b		; 6
+	dcx	d		; 6
 	jrnz	erase$wait	; 12
 
+	pop	d
 	ret
 
 prepare$write:
 	call	krb$flash$set$bank$0
-	lxi	b,08555h
-	lxi	d,08AAAh
 
 	mvi	a,0AAh
-	stax	d		; Cycle 1 - AAAh <- AAh
+	sta	08AAAh		; Cycle 1 - AAAh <- AAh
 	cma
-	stax	b		; Cycle 2 - 555h <- 55h
+	sta	08555h		; Cycle 2 - 555h <- 55h
 	ret
 
 
 
 ; hl - CPU address sector
 copy$sector$to$sram:
-	push	h
-	lxi	h,200h-16
-	push	h
+	lxi	d,sram$sector$bank
 copy$next$bank:
 	call	krb$sram$set$bank
-	pop	d
-	pop	h
-	lxi	bc,krb$sram
+	lxi	b,krb$sram
 copy$next$byte:
 	mov	a,m
 	outp	a
@@ -153,14 +201,12 @@ copy$next$byte:
 	inr	c
 	jrnz	copy$next$byte
 	inr	e
-	rz
-	push	h
-	push	d
-	xchg
-	jr	copy$next$bank
+	jrnz	copy$next$bank
+	ret
+
 
 kbdsk$read:
-	lhld	@trk
+	lded	@trk
 	call	krb$disk$set$bank
 
 	di
@@ -209,7 +255,7 @@ krb$is$present:
 	xra	a
 	outp	a
 
-	lxi	hl,1FFh			; select bank 1FFh
+	lxi	d,01FFh			; select bank 1FFh
 	call	krb$sram$set$bank
 
 	lxi	b,krb$sram
@@ -234,28 +280,51 @@ krb$detect$done:
 	sta	krb$status
 	ret
 
+
 krb$flash$set$bank$0:
-	lxi	hl,0
-	jr	krb$flash$set$bank
+	push	d
+	lxi	d,0
+	jr	krb$flash$do$bank
 
-;	hl - bank 0-47
+;	de - bank 0-47
 krb$disk$set$bank:
-	mov	a,l
+	push	d
+	mov	a,e
 	adi	8
-	mov	l,a
+	mov	e,a
+krb$flash$do$bank:
+	call	krb$flash$set$bank
+	pop	d
+	ret
 
-;	hl - bank 0-1FF
+;	de - bank 0-1FF
 krb$flash$set$bank:
-	shld	krb$flash$addr
+	sded	krb$flash$addr
 	jr	krb$set$banks
 
-krb$sram$set$bank$0:
-	lxi	hl,0			; select bank 0
+krb$sram$set$next$bank:
+	push	d
+	lded	krb$sram$addr
+	inx	d
+	jr	krb$sram$do$bank
 
-;	hl - bank 0-1FF
+krb$sram$set$bank$0:
+	push	d
+	lxi	d,0			; select bank 0
+krb$sram$do$bank:
+	call	krb$sram$set$bank
+	pop	d
+	ret
+
+;	de - bank 0-1FF
 krb$sram$set$bank:
-	shld	krb$sram$addr
+	sded	krb$sram$addr
+
 krb$set$banks:
+	push	b
+	push	d
+	push	h
+
 	lxi	b,krb$flash$bank
 	lxi	h,krb$flash$addr
 
@@ -275,6 +344,10 @@ krb$set$banks:
 	ora	m
 	inx	b
 	outp	a
+
+	pop	h
+	pop	d
+	pop	b
 	ret
 
 krb$flash$addr:

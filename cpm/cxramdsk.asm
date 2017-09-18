@@ -291,7 +291,7 @@ kbsram$vectors:
 ;	A=FF	media change detected
 ;
 kbsram$write:
-	lhld	@trk
+	lded	@trk
 	call	krb$sram$set$bank
 
 	lda	@dbnk		; get disk bank
@@ -315,7 +315,7 @@ krb$do$wr$loop:
 	ret
 
 kbsram$read:
-	lhld	@trk
+	lded	@trk
 	call	krb$sram$set$bank
 
 	lda	@dbnk		; get disk bank
