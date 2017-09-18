@@ -42,7 +42,7 @@ exit
 EOF
 cd A/0
 dd bs=1 if=KEYCODE.BIN of=CPM+.SYS skip=0 seek=256 count=1024 conv=notrunc
-rm *.ASM
+rm *.ASM *.PRN
 
 cd ../../..
 

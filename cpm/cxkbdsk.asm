@@ -5,10 +5,11 @@
 	maclib	cxequ
 
 	extrn	@dtbl		; DMA ram bank
+	extrn	?dkmov$hl
 
-	public	kerberos$is$present
-	public	kerberos$sram$set$bank
-	public	kerberos$buffer$to$dma
+	public	krb$is$present
+	public	krb$sram$set$bank
+	public	krb$buffer$to$dma
 
 	public	kbdsk
 
@@ -60,7 +61,7 @@ dpb$kb:
 
 
 kbdsk$init:
-	call	kerberos$is$present
+	call	krb$is$present
 	ora	a
 	rnz				; found Kerberos
 	
@@ -94,20 +95,61 @@ kbdsk$write:
 	mvi	a,1			; set error
 	ret
 
-; hl - sector
+; hl - CPU address sector
+erase$sector:
+	push	h
+	lhld	krb$flash$addr
+	push	h
+	call	prepare$write
+
+	mvi	a,080h
+	stax	d		; Cycle 3 - AAAh <- 80h
+	mvi	a,0AAh
+	stax	d		; Cycle 4 - AAAh <- AAh
+	cma
+	stax	b		; Cycle 5 - 555h <- 55h
+
+	pop	h
+	call	krb$flash$set$bank
+
+	pop	h
+	mvi	m,050h		; Cycle 6 - Sector base <- 50h
+
+	; wait 25 ms - 50000 cycles at 2 MHz
+	lxi	b,2800
+erase$wait:
+	dcx	b		; 6
+	jrnz	erase$wait	; 12
+
+	ret
+
+prepare$write:
+	call	krb$flash$set$bank$0
+	lxi	b,08555h
+	lxi	d,08AAAh
+
+	mvi	a,0AAh
+	stax	d		; Cycle 1 - AAAh <- AAh
+	cma
+	stax	b		; Cycle 2 - 555h <- 55h
+	ret
+
+
+
+; hl - CPU address sector
 copy$sector$to$sram:
 	push	h
 	lxi	h,200h-16
 	push	h
 copy$next$bank:
-	call	kerberos$sram$set$bank
+	call	krb$sram$set$bank
 	pop	d
 	pop	h
-	lxi	bc,kerb$sram
+	lxi	bc,krb$sram
 copy$next$byte:
 	mov	a,m
 	outp	a
-	inx	hl
+	inx	h
 	inr	c
 	jrnz	copy$next$byte
 	inr	e
@@ -119,7 +161,7 @@ copy$next$byte:
 
 kbdsk$read:
 	lhld	@trk
-	call	kerberos$disk$set$bank
+	call	krb$disk$set$bank
 
 	di
 
@@ -142,76 +184,80 @@ kbdsk$read:
 
 	ei
 
-kerberos$buffer$to$dma:
+krb$buffer$to$dma:
 	lhld	@dma
 	call	?dkmov$hl	; A=0 transfers data from buffer to local$DMA
 	xra	a
 	ret
 
-kerberos$is$present:
-	lda	kerberos$status
+krb$is$present:
+	lda	krb$status
 	ora	a
 	rp
 
 ;	Detect kerberos SRAM
 
 	xra	a
-	lxi	b,kerb$cart$ctl
+	lxi	b,krb$cart$ctl
 	outp	a
 	inr	c
 	outp	a
 
-	call	kerberos$sram$set$bank$0
+	call	krb$sram$set$bank$0
 
-	lxi	b,kerb$sram
+	lxi	b,krb$sram
 	xra	a
 	outp	a
 
 	lxi	hl,1FFh			; select bank 1FFh
-	call	kerberos$sram$set$bank
+	call	krb$sram$set$bank
 
-	lxi	b,kerb$sram
+	lxi	b,krb$sram
 	dcr	a
 	outp	a
 	inp	e
 	cmp	e
-	jrnz	kerberos$missing
+	jrnz	krb$missing
 
-	call	kerberos$sram$set$bank$0
+	call	krb$sram$set$bank$0
 
-	lxi	b,kerb$sram
+	lxi	b,krb$sram
 	inp	a
-	jrnz	kerberos$missing	; found Kerberos
+	jrnz	krb$missing	; found Kerberos
 
 	inr	a
-	jr	kerberos$detect$done
+	jr	krb$detect$done
 
-kerberos$missing:
+krb$missing:
 	xra	a
-kerberos$detect$done:
-	sta	kerberos$status
+krb$detect$done:
+	sta	krb$status
 	ret
 
+krb$flash$set$bank$0:
+	lxi	hl,0
+	jr	krb$flash$set$bank
+
 ;	hl - bank 0-47
-kerberos$disk$set$bank:
+krb$disk$set$bank:
 	mov	a,l
 	adi	8
 	mov	l,a
 
 ;	hl - bank 0-1FF
-kerberos$flash$set$bank:
-	shld	kerberos$flash$addr
-	jr	kerberos$set$banks
+krb$flash$set$bank:
+	shld	krb$flash$addr
+	jr	krb$set$banks
 
-kerberos$sram$set$bank$0:
+krb$sram$set$bank$0:
 	lxi	hl,0			; select bank 0
 
 ;	hl - bank 0-1FF
-kerberos$sram$set$bank:
-	shld	kerberos$sram$addr
-kerberos$set$banks:
-	lxi	b,kerb$flash$bank
-	lxi	h,kerberos$flash$addr
+krb$sram$set$bank:
+	shld	krb$sram$addr
+krb$set$banks:
+	lxi	b,krb$flash$bank
+	lxi	h,krb$flash$addr
 
 	mov	a,m	; flash lo byte
 	outp	a
@@ -226,15 +272,15 @@ kerberos$set$banks:
 	outp	d
 
 	inx	h
-	or	a,m
+	ora	m
 	inx	b
 	outp	a
 	ret
 
-kerberos$flash$addr:
+krb$flash$addr:
 	dw	0h
-kerberos$sram$addr:
+krb$sram$addr:
 	dw	0h
 
-kerberos$status:
+krb$status:
 	db	0FFh

@@ -25,9 +25,9 @@
 	extrn	?fun65
 	extrn	?dkmov$hl
 
-	extrn	kerberos$is$present
-	extrn	kerberos$sram$set$bank
-	extrn	kerberos$buffer$to$dma
+	extrn	krb$is$present
+	extrn	krb$sram$set$bank
+	extrn	krb$buffer$to$dma
 
 	page
 ;
@@ -254,7 +254,7 @@ kbsram$init:
 	lxi	h,007Fh-4		; Reserve 4 AU's (4 KiB) for Kerberos flash disk
 	shld	dpb$RM$128+5
 
-	call	kerberos$is$present
+	call	krb$is$present
 	ora	a
 	jrnz	initialize$directory	; found Kerberos
 	
@@ -292,49 +292,49 @@ kbsram$vectors:
 ;
 kbsram$write:
 	lhld	@trk
-	call	kerberos$sram$set$bank
+	call	krb$sram$set$bank
 
 	lda	@dbnk		; get disk bank
 	ana	a
 	lhld	@dma
-	jrz	kerb$do$wr
+	jrz	krb$do$wr
 	call	?dkmov$hl	; A<>0 transfers data from local$DMA to buffer
 
-kerb$wr$buf:
+krb$wr$buf:
 	lxi	h,@buffer
-kerb$do$wr:
-	lxi	b,kerb$sram
-kerb$do$wr$loop:
+krb$do$wr:
+	lxi	b,krb$sram
+krb$do$wr$loop:
 	mov	d,m
 	outp	d
 	inx	h
 	inr	c
-	jnz	kerb$do$wr$loop
+	jnz	krb$do$wr$loop
 
 	xra	a		; set no errors
 	ret
 
 kbsram$read:
 	lhld	@trk
-	call	kerberos$sram$set$bank
+	call	krb$sram$set$bank
 
 	lda	@dbnk		; get disk bank
 	ana	a		; is it bank zero
 	lhld	@dma
-	jrz	kerb$do$rd	; yes, go read it
+	jrz	krb$do$rd	; yes, go read it
 
-	call	kerb$do$rd$buf	; no,  transfer through buffer
-	jp	kerberos$buffer$to$dma
-kerb$do$rd$buf:
+	call	krb$do$rd$buf	; no,  transfer through buffer
+	jp	krb$buffer$to$dma
+krb$do$rd$buf:
 	lxi	h,@buffer
-kerb$do$rd:
-	lxi	b,kerb$sram
-kerb$do$rd$loop:
+krb$do$rd:
+	lxi	b,krb$sram
+krb$do$rd$loop:
 	inp	d
 	mov	m,d
 	inx	h
 	inr	c
-	jnz	kerb$do$rd$loop
+	jnz	krb$do$rd$loop
 
 	xra	a		; set no errors
 	ret
