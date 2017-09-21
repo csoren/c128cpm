@@ -2,5 +2,6 @@
   "editor.tabSize": 8,
   "editor.insertSpaces": false,
   "files.encoding": "windows1252",
-  "files.eol": "\r\n"
+  "files.eol": "\r\n",
+  "editor.acceptSuggestionOnEnter": "off"
 }

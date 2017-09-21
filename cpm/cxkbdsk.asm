@@ -13,6 +13,16 @@
 
 	public	kbdsk
 
+dcxf	MACRO	?H,?L
+	; 16 decrement that sets carry flag correctly
+	LOCAL	done
+	dcr	l
+	jrnc	done
+	dcr	h
+done:
+	ENDM
+
+
 	page
 ;
 	CSEG		; place code in common memory
@@ -109,7 +119,7 @@ copy$sram$to$flash:
 	call	krb$sram$set$bank
 
 	lxi	b,krb$sram
-	lxi	d,01000h
+	lxi	d,01000h-1
 
 flash$next$byte:
 	inp	a
@@ -137,8 +147,8 @@ flash$next$byte:
 	; The next commands take longer
 
 do$next$byte:
-	dcx	de			; 6
-	jrz	flash$done		; 7
+	dcxf	de			; 6
+	jrc	flash$done		; 7
 	inx	hl			; 6
 	inr	c			; 4
 	cz	krb$sram$set$next$bank	; 10
@@ -169,10 +179,10 @@ erase$sector:
 	mvi	m,050h		; Cycle 6 - Sector base <- 50h
 
 	; wait 25 ms - 50000 cycles at 2 MHz
-	lxi	d,2800
+	lxi	d,2800-1
 erase$wait:
-	dcx	d		; 6
-	jrnz	erase$wait	; 12
+	dcxf	d		; 6
+	jrnc	erase$wait	; 12
 
 	pop	d
 	ret
